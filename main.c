@@ -1,13 +1,13 @@
 #include "raylib.h"
 #include <math.h>
-
+#include <stdio.h>
 
 float tempoJogo = 0.0f;
 
 int tamanhoTelaX = 1280;
 int tamanhoTelaY = 720;
 float playerX = 30;
-float playerY = 640;
+float playerY = 500;
 bool direcao = true; // true direita, false esquerda
 float playerVelocidade = 200.0f;
 
@@ -206,14 +206,7 @@ void personagemDash(Texture2D personagemEmDash)
     DrawTexturePro(personagemEmDash, origem, destino, (Vector2){0, 0}, 0.0f, WHITE);
 }
 
-bool VerificarColisao(Rectangle objeto1, Rectangle objeto2)
-{
 
-    return (objeto1.x < objeto2.x + objeto2.width &&
-            objeto1.x + objeto1.width > objeto2.x &&
-            objeto1.y < objeto2.y + objeto2.height &&
-            objeto1.y + objeto1.height > objeto2.y);
-}
 
 void movimentoHorizontal(float tempo)
 {
@@ -252,7 +245,7 @@ void pulo(float tempo)
 {
     velocidadePuloY += gravidadeAceleracao * tempo;
 
-    if (IsKeyPressed(KEY_UP) && podePular)
+    if ((IsKeyPressed(KEY_UP) || IsKeyDown(KEY_UP)) && podePular)
     {
 
         velocidadePuloY = focarPuloInicial;
@@ -281,6 +274,20 @@ int main(void)
     Texture2D jogadorMovendo = LoadTexture("sprites/Chick-Boy Free Pack/ChikBoy_run.png");
     Texture2D jogadorPulando = LoadTexture("sprites/Galinha_Pulando.png");
     Texture2D jogadorDash = LoadTexture("sprites/Galinha_Dash.png");
+
+    // Plataformas da fase
+
+    ObjetosCena plataforma[] = {
+
+        {(Rectangle){0, 672, 100, 20}, true, BLUE},
+        {(Rectangle){300, 200, 50, 100}, true, BLUE},
+        {(Rectangle){300, 672, 200, 20}, true, BLUE},
+        {(Rectangle){600, 672, 150, 20}, true, BLUE},
+        {(Rectangle){850, 672, 100, 20}, true, BLUE}
+
+    };
+
+    int numPlataformas = sizeof(plataforma) / sizeof(plataforma[0]);
 
     while (!WindowShouldClose())
     {
@@ -324,39 +331,50 @@ int main(void)
             movimentoHorizontal(gravidadeMundo());
         }
 
-        // --- Desenho na Tela ---
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
+        // -- DETECTAR Colisão
 
-        DrawText("PROJECT CHICKEN", 400, 50, 30, RED);
+        bool emChao = false;
+        
 
-        BeginMode2D(cameraPlayer);
+        Rectangle playerRect = {playerX, playerY, (float)jogadorParado.width, (float)(jogadorParado.height / 6)};
 
-        desenhaCenario(background, solo, armadilhas);
-
-        ObjetosCena plataforma[] = {
-
-            {(Rectangle){0, 672, 100, 20}, true},
-            {(Rectangle){300, 200, 50, 100}, true}};
-
-        DrawRectangleRec(plataforma[0].retangulo, BLUE);
-
-        float chaoTemporarioY = 650; //
-
-        if (playerY >= chaoTemporarioY)
+        for (int i = 0; i < numPlataformas; i++)
         {
-            playerY = chaoTemporarioY;
-            velocidadePuloY = 0.0f;
-            podePular = true;
-            gravidadeAceleracao = 0.0f;
+            // Colisão geral com a plataforma
+            if (CheckCollisionRecs(playerRect, plataforma[i].retangulo) && plataforma[i].solido)
+            {
+                // Verifica se a colisão é por cima (player caindo ou parado em cima)
+                if (playerRect.y + playerRect.height - velocidadePuloY * tempoDoFrame <= plataforma[i].retangulo.y && velocidadePuloY >= 0)
+                {
+                    playerY = plataforma[i].retangulo.y - playerRect.height;
+                    velocidadePuloY = 0.0f;
+                    emChao = true;
+                    podePular = true;
+                }
+                // Colisão por baixo (player batendo a cabeça)
+                else if (playerRect.y - velocidadePuloY * tempoDoFrame >= plataforma[i].retangulo.y + plataforma[i].retangulo.height && velocidadePuloY < 0)
+                {
+                    playerY = plataforma[i].retangulo.y + plataforma[i].retangulo.height;
+                    velocidadePuloY = 0.0f;
+                }
+            }
         }
-        else
+
+        // Atualiza o estado do personagem
+        if (!emChao)
         {
+            // Se não está no chão, aplica gravidade
             gravidadeAceleracao = 800.0f;
             podePular = false;
         }
+        else
+        {
+            // Se está no chão, reseta a velocidade vertical e permite pular
+            velocidadePuloY = 0.0f;
+            podePular = true;
+        }
 
-        // -- logica controle de estados de animacao
+        //  Controle de estado de animacao
 
         int proximaAnimacao = -1;
 
@@ -364,27 +382,25 @@ int main(void)
         {
 
             proximaAnimacao = 3;
-            personagemDash(jogadorDash);
         }
 
-        else if (playerY < chaoTemporarioY)
+        else if (!emChao)
         {
 
             proximaAnimacao = 2;
-            personagemPulando(jogadorPulando);
         }
-
-        else if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_RIGHT))
-        {
-
-            proximaAnimacao = 1;
-            personagemMovendo(jogadorMovendo);
-        }
-
         else
         {
-            proximaAnimacao = 0;
-            personagemParado(jogadorParado);
+
+            if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_RIGHT))
+            {
+                proximaAnimacao = 1;
+            }
+            else
+            {
+
+                proximaAnimacao = 0;
+            }
         }
 
         if (proximaAnimacao != estadoAnimacao)
@@ -395,15 +411,66 @@ int main(void)
             estadoAnimacao = proximaAnimacao;
         }
 
+        // --- Desenho na Tela ---
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+
+        DrawText("PROJECT CHICKEN", 400, 50, 30, RED);
+
+        BeginMode2D(cameraPlayer);
+
+        desenhaCenario(background, solo, armadilhas);
+
+        for (int i = 0; i < numPlataformas; i++)
+        {
+            DrawRectangleRec(plataforma[i].retangulo, plataforma[i].cor);
+        }
+
+        // Chama animacao do player
+
+        if (estadoAnimacao == 3)
+        {
+            personagemDash(jogadorDash);
+        }
+        else if (estadoAnimacao == 2)
+        {
+            personagemPulando(jogadorPulando);
+        }
+        else if (estadoAnimacao == 1)
+        {
+            personagemMovendo(jogadorMovendo);
+        }
+        else
+        { // estadoAnimacao == 0 (parado) ou qualquer outro caso padrão
+            personagemParado(jogadorParado);
+        }
+
+        DrawRectangleLines(playerX, playerY, (float)jogadorParado.width, (float)jogadorParado.height / 6, RED);
+
         EndMode2D();
 
         // -- UI
 
-
-        const char* textoTempo = TextFormat ("%.1f", tempoJogo);
-        int larguraTexto = MeasureText(textoTempo,30);
-        int posicaoXTexto = (tamanhoTelaX - larguraTexto)/2;
+        const char *textoTempo = TextFormat("%.1f", tempoJogo);
+        int larguraTexto = MeasureText(textoTempo, 30);
+        int posicaoXTexto = (tamanhoTelaX - larguraTexto) / 2;
         DrawText(textoTempo, posicaoXTexto, 20, 30, DARKBLUE);
+
+        // Debug Visual para o estado do player
+        const char *estadoPlayerTexto;
+        Color estadoPlayerCor;
+
+        if (emChao)
+        {
+            estadoPlayerTexto = "Estado: No Chão";
+            estadoPlayerCor = GREEN;
+        }
+        else
+        {
+            estadoPlayerTexto = "Estado: No Ar (Pulando/Caindo)";
+            estadoPlayerCor = ORANGE;
+        }
+        DrawText(estadoPlayerTexto, 10, 10, 20, estadoPlayerCor); // Posição (10, 10) na tela
 
         EndDrawing();
     }
@@ -411,6 +478,8 @@ int main(void)
     // Descarrega a textura antes de fechar
     UnloadTexture(jogadorParado);
     UnloadTexture(jogadorMovendo);
+    UnloadTexture(jogadorPulando);
+    UnloadTexture(jogadorDash);
     UnloadTexture(background);
     UnloadTexture(solo);
     UnloadTexture(armadilhas);
