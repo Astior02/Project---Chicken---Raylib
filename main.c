@@ -31,6 +31,12 @@ float dashVelocidade = 300.0f;
 float dashTempo;
 float dashDuracao = 0.7f;
 
+// -- variáveis para colisao
+bool colisaoDireita = false;
+bool colisaoEsquerda = false;
+bool grudandoParede = false;
+float velocidadeDescidaParede = 100.0f;
+
 typedef struct
 {
     Rectangle retangulo;
@@ -206,8 +212,6 @@ void personagemDash(Texture2D personagemEmDash)
     DrawTexturePro(personagemEmDash, origem, destino, (Vector2){0, 0}, 0.0f, WHITE);
 }
 
-
-
 void movimentoHorizontal(float tempo)
 {
 
@@ -280,7 +284,7 @@ int main(void)
     ObjetosCena plataforma[] = {
 
         {(Rectangle){0, 672, 100, 20}, true, BLUE},
-        {(Rectangle){300, 200, 50, 100}, true, BLUE},
+        {(Rectangle){300, 500, 50, 100}, true, BLUE},
         {(Rectangle){300, 672, 200, 20}, true, BLUE},
         {(Rectangle){600, 672, 150, 20}, true, BLUE},
         {(Rectangle){850, 672, 100, 20}, true, BLUE}
@@ -334,7 +338,6 @@ int main(void)
         // -- DETECTAR Colisão
 
         bool emChao = false;
-        
 
         Rectangle playerRect = {playerX, playerY, (float)jogadorParado.width, (float)(jogadorParado.height / 6)};
 
@@ -343,7 +346,7 @@ int main(void)
             // Colisão geral com a plataforma
             if (CheckCollisionRecs(playerRect, plataforma[i].retangulo) && plataforma[i].solido)
             {
-                // Verifica se a colisão é por cima (player caindo ou parado em cima)
+                // Verifica se a colisão é por cima
                 if (playerRect.y + playerRect.height - velocidadePuloY * tempoDoFrame <= plataforma[i].retangulo.y && velocidadePuloY >= 0)
                 {
                     playerY = plataforma[i].retangulo.y - playerRect.height;
@@ -351,11 +354,35 @@ int main(void)
                     emChao = true;
                     podePular = true;
                 }
-                // Colisão por baixo (player batendo a cabeça)
+                // Colisão por baixo
                 else if (playerRect.y - velocidadePuloY * tempoDoFrame >= plataforma[i].retangulo.y + plataforma[i].retangulo.height && velocidadePuloY < 0)
                 {
                     playerY = plataforma[i].retangulo.y + plataforma[i].retangulo.height;
                     velocidadePuloY = 0.0f;
+                }
+
+                // Colisão pela direita
+                else if (playerRect.x + playerRect.width >= plataforma[i].retangulo.x &&
+                         playerRect.x < plataforma[i].retangulo.x &&
+                         playerRect.y + playerRect.height > plataforma[i].retangulo.y &&
+                         playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height)
+                {
+                    playerX = plataforma[i].retangulo.x - playerRect.width;
+                    gravidadeAceleracao = 0.0f;
+                    grudandoParede = true;
+                    
+                }
+
+                // colisao pela esquerda
+
+                else if (playerRect.x < plataforma[i].retangulo.x + plataforma[i].retangulo.width &&
+                         playerRect.x + playerRect.width > plataforma[i].retangulo.x + plataforma[i].retangulo.width - (velocidadePuloY * tempoDoFrame) && 
+                         playerRect.y + playerRect.height > plataforma[i].retangulo.y + (velocidadePuloY * tempoDoFrame) &&                                
+                         playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height - (velocidadePuloY * tempoDoFrame))
+                {
+                    playerX = plataforma[i].retangulo.x + plataforma[i].retangulo.width;
+                    gravidadeAceleracao = 0.0f;
+                    grudandoParede = true;
                 }
             }
         }
