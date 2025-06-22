@@ -27,9 +27,10 @@ int estadoAnimacao = -1;
 // -- variáveis para dash
 
 bool dashAtivo = false;
-float dashVelocidade = 300.0f;
+float dashVelocidade = 200.0f;
 float dashTempo;
-float dashDuracao = 0.7f;
+float dashDuracao = 0.4f;
+bool dashVertical = false;
 
 // -- variáveis para colisao
 bool colisaoDireita = false;
@@ -212,6 +213,35 @@ void personagemDash(Texture2D personagemEmDash)
     DrawTexturePro(personagemEmDash, origem, destino, (Vector2){0, 0}, 0.0f, WHITE);
 }
 
+void persoangemParede(Texture2D personagemParede){
+
+    int totalFrames = 1;
+    int frameVelocidade = 6;
+
+    int alturaFrame = personagemParede.height / totalFrames;
+
+    animarMovimento(totalFrames, alturaFrame, frameVelocidade);
+
+    Rectangle origem = {
+        0.0f,
+        (float)frameAtual * alturaFrame,
+        (float)personagemParede.width,
+        alturaFrame};
+
+    Rectangle destino = {
+        playerX,
+        playerY,
+        personagemParede.width,
+        alturaFrame};
+
+    if (!direcao)
+    {
+        origem.width *= -1;
+    }
+
+    DrawTexturePro(personagemParede, origem, destino, (Vector2){0, 0}, 0.0f, WHITE);
+}
+
 void movimentoHorizontal(float tempo)
 {
 
@@ -236,13 +266,6 @@ void cameraPrincipal(Camera2D *camera)
     camera->offset = (Vector2){tamanhoTelaX / 2.0f, tamanhoTelaY / 2.0f};        // Centraliza
     camera->rotation = 0.0f;
     camera->zoom = 1.0f;
-}
-
-float gravidadeMundo()
-{
-    float aceleracao = GetFrameTime();
-
-    return aceleracao;
 }
 
 void pulo(float tempo)
@@ -278,13 +301,22 @@ int main(void)
     Texture2D jogadorMovendo = LoadTexture("sprites/Chick-Boy Free Pack/ChikBoy_run.png");
     Texture2D jogadorPulando = LoadTexture("sprites/Galinha_Pulando.png");
     Texture2D jogadorDash = LoadTexture("sprites/Galinha_Dash.png");
+    Texture2D jogadorParede = LoadTexture("sprites/parede.png");
+
+
 
     // Plataformas da fase
 
     ObjetosCena plataforma[] = {
 
+        {(Rectangle){0, 0, 20, 1000}, true, BLUE},
+        {(Rectangle){0, 710, 1000, 20}, true, BLUE},
+
         {(Rectangle){0, 672, 100, 20}, true, BLUE},
-        {(Rectangle){300, 500, 50, 100}, true, BLUE},
+        {(Rectangle){150, 200, 50, 1000}, true, RED},
+        {(Rectangle){300, 200, 50, 1000}, true, RED},
+        {(Rectangle){600, 500, 50, 1000}, true, BLUE},
+
         {(Rectangle){300, 672, 200, 20}, true, BLUE},
         {(Rectangle){600, 672, 150, 20}, true, BLUE},
         {(Rectangle){850, 672, 100, 20}, true, BLUE}
@@ -303,11 +335,21 @@ int main(void)
 
         tempoJogo += tempoDoFrame;
 
-        if (IsKeyPressed(KEY_LEFT_SHIFT) && !dashAtivo)
+        if (IsKeyPressed(KEY_LEFT_SHIFT) && !dashAtivo && !grudandoParede)
         {
-            dashAtivo = true;
 
-            dashTempo = dashDuracao;
+            if (IsKeyDown(KEY_UP))
+            {
+                dashVertical = true;
+                dashAtivo = true;
+                dashTempo = dashDuracao;
+            }
+            else if ((IsKeyDown(KEY_RIGHT)) || (IsKeyDown(KEY_LEFT)))
+            {
+                dashVertical = false;
+                dashAtivo = true;
+                dashTempo = dashDuracao;
+            }
         }
 
         if (dashAtivo)
@@ -315,27 +357,39 @@ int main(void)
 
             dashTempo -= tempoDoFrame;
 
-            if (direcao)
+            if (dashVertical)
             {
-                playerX += dashVelocidade * tempoDoFrame;
+
+                playerY -= dashVelocidade * tempoDoFrame;
             }
             else
             {
-                playerX -= dashVelocidade * tempoDoFrame;
+
+                if (direcao)
+                {
+                    playerX += dashVelocidade * tempoDoFrame;
+                }
+                else
+                {
+                    playerX -= dashVelocidade * tempoDoFrame;
+                }
             }
 
             if (dashTempo <= 0.0f)
             {
                 dashAtivo = false;
+                dashVertical = false;
             }
         }
         else
         {
-            pulo(gravidadeMundo());
-            movimentoHorizontal(gravidadeMundo());
+            pulo(GetFrameTime());
+            movimentoHorizontal(GetFrameTime());
         }
 
         // -- DETECTAR Colisão
+
+        grudandoParede = false;
 
         bool emChao = false;
 
@@ -367,32 +421,52 @@ int main(void)
                          playerRect.y + playerRect.height > plataforma[i].retangulo.y &&
                          playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height)
                 {
+
+                    if (dashAtivo)
+                    {
+
+                        dashAtivo = false;
+                    }
+
                     playerX = plataforma[i].retangulo.x - playerRect.width;
-                    gravidadeAceleracao = 0.0f;
+
                     grudandoParede = true;
-                    
                 }
 
                 // colisao pela esquerda
 
                 else if (playerRect.x < plataforma[i].retangulo.x + plataforma[i].retangulo.width &&
-                         playerRect.x + playerRect.width > plataforma[i].retangulo.x + plataforma[i].retangulo.width - (velocidadePuloY * tempoDoFrame) && 
-                         playerRect.y + playerRect.height > plataforma[i].retangulo.y + (velocidadePuloY * tempoDoFrame) &&                                
+                         playerRect.x + playerRect.width > plataforma[i].retangulo.x + plataforma[i].retangulo.width - (velocidadePuloY * tempoDoFrame) &&
+                         playerRect.y + playerRect.height > plataforma[i].retangulo.y + (velocidadePuloY * tempoDoFrame) &&
                          playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height - (velocidadePuloY * tempoDoFrame))
                 {
+
+                    if (dashAtivo)
+                    {
+
+                        dashAtivo = false;
+                    }
+
                     playerX = plataforma[i].retangulo.x + plataforma[i].retangulo.width;
-                    gravidadeAceleracao = 0.0f;
+
                     grudandoParede = true;
                 }
             }
         }
 
         // Atualiza o estado do personagem
-        if (!emChao)
+        if (!emChao && !grudandoParede)
         {
-            // Se não está no chão, aplica gravidade
+            // Se não está no chão e não está grudando na parede, aplica gravidade
             gravidadeAceleracao = 800.0f;
             podePular = false;
+        }
+        else if (!emChao && grudandoParede)
+        {
+            
+            gravidadeAceleracao = 1800.0f;
+            velocidadePuloY = 0.0f;
+            podePular = true;
         }
         else
         {
@@ -409,6 +483,10 @@ int main(void)
         {
 
             proximaAnimacao = 3;
+        }
+        else if (!emChao && grudandoParede){
+
+            proximaAnimacao = 4;
         }
 
         else if (!emChao)
@@ -454,8 +532,11 @@ int main(void)
         }
 
         // Chama animacao do player
+        if (estadoAnimacao == 4){
 
-        if (estadoAnimacao == 3)
+            persoangemParede(jogadorParede);
+        }
+        else if (estadoAnimacao == 3)
         {
             personagemDash(jogadorDash);
         }
