@@ -1,10 +1,5 @@
-Guerreiro 1464
-Guerreiro 1360
-Guerreiro 1272
-Guerreiro 1146
-Guerreiro 795
-Guerreiro 781
-Guerreiro 717
-Guerreiro 643
-Guerreiro 543
-oer 0
+Nome: sub     Tempo: 14.2 segundos
+Nome: errado     Tempo: 14.2 segundos
+Nome: bug     Tempo: 20.0 segundos
+Nome: Funciona     Tempo: 25.0 segundos
+Nome: 5 posicao     Tempo: 33.4 segundos

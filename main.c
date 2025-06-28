@@ -4,7 +4,6 @@
 #define RAYGUI_IMPLEMENTATION
 #include "deps/raygui.h"
 
-
 // --- variáveis globais do player
 
 float tempoJogo = 0.0f;
@@ -17,7 +16,10 @@ bool direcao = true; // true direita, false esquerda
 float playerVelocidade = 200.0f;
 int vida = 0; // -1 morreu, 0 vivendo, 1 nasceu
 
+// -- checkpoint/ Vitória
+
 int playerCkeckpointX = 30, playerCkeckpointY = 500;
+bool vitoria = false;
 
 // -- variáveis para pulo
 
@@ -37,8 +39,7 @@ float tempoAnimacaoMorte = 0.0f;
 float duracaoAnimacaoMorte = 1.0f; // Duração da animação de morte
 float tempoAnimacaoNascer = 0.0f;
 float duracaoAnimacaoNascer = 1.0f; // Duração da animação de nascimento
-bool podeControlarPlayer = true; // Controla se o jogador pode se mover
-
+bool podeControlarPlayer = true;    // Controla se o jogador pode se mover
 
 // -- variáveis para dash
 
@@ -47,7 +48,7 @@ float dashVelocidade = 200.0f;
 float dashTempo;
 float dashDuracao = 0.4f;
 bool dashVertical = false;
-bool dashVerticalUsadoNoAr = false; 
+bool dashVerticalUsadoNoAr = false;
 
 // -- variáveis para colisao
 bool colisaoDireita = false;
@@ -68,16 +69,14 @@ typedef struct
 void desenhaCenario(Texture2D fundo)
 {
 
-   // DrawTexture(fundo, 0, 0, WHITE);
-    //DrawTexture(solo, 0, 0, WHITE);
+    // DrawTexture(fundo, 0, 0, WHITE);
+    // DrawTexture(solo, 0, 0, WHITE);
 
     // -- DESENHA FUNDO
 
     Rectangle origem = {0.0f, 0.0f, (float)fundo.width, (float)fundo.height};
     Rectangle destino = {0.0f, 0.0f, (float)larguraFase, (float)tamanhoTelaY};
     DrawTexturePro(fundo, origem, destino, (Vector2){0, 0}, 0.0f, WHITE);
-
-    
 }
 
 void animarMovimento(int framesTotais, int alturaFrame, int frameVelocidade)
@@ -257,8 +256,6 @@ void personagemMorrer(Texture2D personagemMorrerTex)
 
     int alturaFrame = personagemMorrerTex.height / totalFrames;
 
-
-
     animarMovimento(totalFrames, alturaFrame, frameVelocidade);
 
     Rectangle origem = {
@@ -288,8 +285,6 @@ void personagemNascer(Texture2D personagemNascerTex)
 
     int alturaFrame = personagemNascerTex.height / totalFrames;
 
-
-
     animarMovimento(totalFrames, alturaFrame, frameVelocidade);
 
     Rectangle origem = {
@@ -312,8 +307,6 @@ void personagemNascer(Texture2D personagemNascerTex)
     DrawTexturePro(personagemNascerTex, origem, destino, (Vector2){0, 0}, 0.0f, WHITE);
 }
 
-
-
 void movimentoHorizontal(float tempo)
 {
 
@@ -335,7 +328,7 @@ void cameraPrincipal(Camera2D *camera)
     float inicioFase = tamanhoTelaX / 2.0f;
 
     camera->target = (Vector2){fmaxf(inicioFase, playerX), tamanhoTelaY / 2.0f}; // segue o player
-    camera->offset = (Vector2){tamanhoTelaX / 2.0f, tamanhoTelaY / 2.0f};          // Centraliza
+    camera->offset = (Vector2){tamanhoTelaX / 2.0f, tamanhoTelaY / 2.0f};        // Centraliza
     camera->rotation = 0.0f;
     camera->zoom = 1.0f;
 }
@@ -354,70 +347,153 @@ void pulo(float tempo)
 }
 
 // ranking
+
+// -- variáveis para o ranking
+
+#define MAX_NOME 10 // tamanho máximo do nome
+#define MAX_RANK 5  // TAMANHO MÁXIMO DE POSIÇÕES DO RANK
+
 typedef struct
 {
-    char nomeRaking[32];
-    int pontuacao;
-} PosicaoRank;
+    char nome[MAX_NOME];
+    float tempo;
+} Ranking;
 
-#define MAX_ENTRADA_RANK 10
-PosicaoRank ranks[MAX_ENTRADA_RANK];
+bool focoCaixaRank = true;
 
-int rankOcupados = 0;
+Ranking jogadorRank = {"", 0.0f};
 
-const char *rank = "ranking.txt";
+void desenharRanking()
+{
+    ClearBackground(WHITE);
+    static bool salvou = false;
+    static bool rankingCarregado = false;
+    static Ranking ranking[MAX_RANK];
+    static int totalRanking = 0;
 
-void CarregarRank(){
+    Rectangle caixaTexto = {40, tamanhoTelaY - 80, 300, 40};
 
-    FILE *file = fopen(rank,"r");
 
-    rankOcupados = 0;
-
-    while (fscanf(file, "%31s %d",ranks[rankOcupados].nomeRaking, &ranks[rankOcupados].pontuacao) == 2)
+    // carrega o ranking 1 vez
+    if (!rankingCarregado && FileExists("ranking.txt"))
     {
-        rankOcupados++;
 
-        if (rankOcupados >= MAX_ENTRADA_RANK ){
+        FILE *file = fopen("ranking.txt", "r");
 
-            break;
+        while (!feof(file) && totalRanking < MAX_RANK)
+        {
+
+            fscanf(file, "Nome: %s\nTempo: %f segundos\n", ranking[totalRanking].nome, &ranking[totalRanking].tempo);
+            totalRanking++;
         }
+
+        fclose(file);
+        rankingCarregado = true;
     }
 
-    fclose(file);
-
-}
-
-void salvarRank(){
-
-    FILE *file = fopen(rank, "w");
-
-    for (int i=0; i < rankOcupados; i++){
-        fprintf(file, "%s %d\n", ranks[i].nomeRaking, ranks[i].pontuacao);
+    // Controle da caixa de texto para digitar o nome
+    if (GuiTextBox(caixaTexto, jogadorRank.nome, MAX_NOME, focoCaixaRank))
+    {
+        focoCaixaRank = !focoCaixaRank;
     }
 
-    fclose(file);
-}
+    // Salvamento do ranking
+    if (IsKeyPressed(KEY_ENTER))
+    {
+        if (strlen(jogadorRank.nome) > 0)
+        {
 
-void ordenarRanking(){
+            jogadorRank.tempo = tempoJogo;
 
-    for (int i=0; i< rankOcupados - 1; i++){
+            // adiciona um novo ranking
 
-        for (int j=0; j < rankOcupados - i - 1; j++){
-
-            if (ranks[j].pontuacao < ranks[j+1].pontuacao) {
-
-                PosicaoRank temp = ranks[j];
-                ranks[j] = ranks[j+1];
-                ranks[j+1] = temp;
+            if (totalRanking < MAX_RANK)
+            {
+                ranking[totalRanking] = jogadorRank;
+                totalRanking++;
             }
+            else
+            {
+
+                ranking[MAX_RANK - 1] = jogadorRank;
+            }
+
+            // ordena pelo menor tempo
+
+            for (int i = 0; i < totalRanking - 1; i++)
+            {
+
+                for (int j = i + 1; j < totalRanking; j++)
+                {
+
+                    if (ranking[j].tempo < ranking[i].tempo)
+
+                    {
+                        Ranking temp = ranking[i];
+                        ranking[i] = ranking[j];
+                        ranking[j] = temp;
+                    }
+                }
+            }
+
+            // salvar no arquivo
+
+            FILE *file = fopen("ranking.txt", "w");
+
+            for (int i = 0; i < totalRanking; i++)
+            {
+                fprintf(file, "Nome: %s     Tempo: %.1f segundos\n", ranking[i].nome, ranking[i].tempo);
+            }
+            fclose(file);
+
+            salvou = true;
         }
+
+        if (salvou = true){
+
+            
+        }
+
+        focoCaixaRank = false;
+    }
+
+    // Textos informativos
+    DrawText("Digite seu nome:", caixaTexto.x, caixaTexto.y - 30, 20, DARKGRAY);
+    DrawText("Pressione ENTER para salvar", caixaTexto.x, caixaTexto.y + 50, 20, DARKGRAY);
+
+    if (salvou)
+    {
+        DrawText("Ranking salvo com sucesso!", caixaTexto.x, caixaTexto.y + 80, 20, GREEN);
+    }
+
+    // Mostrar ranking
+
+    // DrawText("Ranking Top 5:", 300, 20, DARKBLUE);
+
+    const char *titulo = "Ranking Top 5:";
+    int fonte = 20;
+    int larguraTexto = MeasureText(titulo, fonte);
+    int posX = (tamanhoTelaX - larguraTexto) / 2;
+    DrawText(titulo, posX, 300, fonte, DARKBLUE);
+
+
+    for (int i = 0; i < totalRanking; i++)
+    {
+        char linha[50]; // linha formatada: nome + tempo
+        snprintf(linha, sizeof(linha), "%d. %s - %.1fs", i + 1, ranking[i].nome, ranking[i].tempo);
+
+        int fonte = 20;
+        int larguraTexto = MeasureText(linha, fonte);
+        int posX = (tamanhoTelaX - larguraTexto) / 2;
+
+        DrawText(linha, posX, 340 + i * 30, fonte, BLACK);
     }
 }
-
-
 
 int main(void)
 {
+
+    // tentando criar arquivo txt
 
     Camera2D cameraPlayer;
 
@@ -439,7 +515,6 @@ int main(void)
     Texture2D jogadorParede = LoadTexture("sprites/parede.png");
     Texture2D jogadorNascer = LoadTexture("sprites/Nascer.png");
     Texture2D jogadorMorrer = LoadTexture("sprites/morrer.png");
-
 
     // Plataformas da fase
     // -- plataformas ok
@@ -465,10 +540,7 @@ int main(void)
 
     ObjetosCena plataformaArmadihas[] = {
 
-
         {(Rectangle){0, 710, 1000, 20}, true, RED},
-
-
 
     };
 
@@ -495,7 +567,7 @@ int main(void)
                 playerX = playerCkeckpointX;
                 playerY = playerCkeckpointY;
                 tempoAnimacaoNascer = 0.0f; // Reseta o tempo de nascimento
-                velocidadePuloY = 0.0f; // Reseta a velocidade do pulo
+                velocidadePuloY = 0.0f;     // Reseta a velocidade do pulo
             }
         }
         else if (vida == 1) // Jogador está nascendo
@@ -503,15 +575,14 @@ int main(void)
             tempoAnimacaoNascer += tempoDoFrame;
             if (tempoAnimacaoNascer >= duracaoAnimacaoNascer)
             {
-                vida = 0; // Transiciona para "vivendo"
+                vida = 0;                   // Transiciona para "vivendo"
                 podeControlarPlayer = true; // Permite o controle do jogador
             }
         }
 
-
-        if (podeControlarPlayer) 
+        if (podeControlarPlayer)
         {
-            
+
             if (IsKeyPressed(KEY_LEFT_SHIFT) && IsKeyDown(KEY_UP) && !dashAtivo && !grudandoParede && !dashVerticalUsadoNoAr)
             {
                 dashVertical = true;
@@ -519,7 +590,7 @@ int main(void)
                 dashTempo = dashDuracao;
                 dashVerticalUsadoNoAr = true; // Marca que o dash vertical foi usado
             }
-            
+
             else if (IsKeyPressed(KEY_LEFT_SHIFT) && (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) && !dashAtivo && !grudandoParede)
             {
                 dashVertical = false;
@@ -594,9 +665,9 @@ int main(void)
 
                 // Colisão pela direita
                 else if (playerRect.x + playerRect.width >= plataforma[i].retangulo.x &&
-                                playerRect.x < plataforma[i].retangulo.x &&
-                                playerRect.y + playerRect.height > plataforma[i].retangulo.y &&
-                                playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height)
+                         playerRect.x < plataforma[i].retangulo.x &&
+                         playerRect.y + playerRect.height > plataforma[i].retangulo.y &&
+                         playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height)
                 {
 
                     if (dashAtivo)
@@ -613,9 +684,9 @@ int main(void)
                 // colisao pela esquerda
 
                 else if (playerRect.x < plataforma[i].retangulo.x + plataforma[i].retangulo.width &&
-                                playerRect.x + playerRect.width > plataforma[i].retangulo.x + plataforma[i].retangulo.width - (velocidadePuloY * tempoDoFrame) &&
-                                playerRect.y + playerRect.height > plataforma[i].retangulo.y + (velocidadePuloY * tempoDoFrame) &&
-                                playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height - (velocidadePuloY * tempoDoFrame))
+                         playerRect.x + playerRect.width > plataforma[i].retangulo.x + plataforma[i].retangulo.width - (velocidadePuloY * tempoDoFrame) &&
+                         playerRect.y + playerRect.height > plataforma[i].retangulo.y + (velocidadePuloY * tempoDoFrame) &&
+                         playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height - (velocidadePuloY * tempoDoFrame))
                 {
 
                     if (dashAtivo)
@@ -655,24 +726,29 @@ int main(void)
         }
 
         // --- colisao com armadilhas
-        for (int i = 0; i < numPlataformasArmadilhas; i++){
-            if (CheckCollisionRecs(playerRect, plataformaArmadihas[i].retangulo) && plataformaArmadihas[i].solido){
-                if (vida == 0) { // Só morre se estiver vivo
-                    vida = -1; // Sinaliza que o jogador morreu
+        for (int i = 0; i < numPlataformasArmadilhas; i++)
+        {
+            if (CheckCollisionRecs(playerRect, plataformaArmadihas[i].retangulo) && plataformaArmadihas[i].solido)
+            {
+                if (vida == 0)
+                {                                // Só morre se estiver vivo
+                    vida = -1;                   // Sinaliza que o jogador morreu
                     podeControlarPlayer = false; // Desativa o controle
-                    tempoAnimacaoMorte = 0.0f; // Reinicia o tempo da animação de morte
+                    tempoAnimacaoMorte = 0.0f;   // Reinicia o tempo da animação de morte
                 }
             }
         }
-
 
         // Controle de estado de animacao
 
         int proximaAnimacao = -1;
 
-        if (vida == -1) { // Jogador está morrendo
+        if (vida == -1)
+        { // Jogador está morrendo
             proximaAnimacao = 6;
-        } else if (vida == 1) { // Jogador está nascendo
+        }
+        else if (vida == 1)
+        { // Jogador está nascendo
             proximaAnimacao = 5;
         }
         else if (dashAtivo)
@@ -729,8 +805,6 @@ int main(void)
             DrawRectangleRec(plataforma[i].retangulo, plataforma[i].cor);
         }
 
-
-
         for (int i = 0; i < numPlataformasArmadilhas; i++)
         {
             DrawRectangleRec(plataformaArmadihas[i].retangulo, plataformaArmadihas[i].cor);
@@ -782,13 +856,17 @@ int main(void)
         const char *estadoPlayerTexto;
         Color estadoPlayerCor;
 
-        if (vida == -1) {
+        if (vida == -1)
+        {
             estadoPlayerTexto = "Estado: Morreu!";
             estadoPlayerCor = DARKPURPLE;
-        } else if (vida == 1) {
+        }
+        else if (vida == 1)
+        {
             estadoPlayerTexto = "Estado: Nascendo...";
             estadoPlayerCor = SKYBLUE;
-        } else if (emChao)
+        }
+        else if (emChao)
         {
             estadoPlayerTexto = "Estado: No Chão";
             estadoPlayerCor = GREEN;
@@ -799,6 +877,16 @@ int main(void)
             estadoPlayerCor = ORANGE;
         }
         DrawText(estadoPlayerTexto, 10, 10, 20, estadoPlayerCor); // Posição (10, 10) na tela
+
+        desenharRanking();
+
+        if (FileExists("ranking.txt"))
+        {
+            DrawText("Último ranking salvo:", 800, 580, 20, DARKGRAY);
+            char *fileData = LoadFileText("ranking.txt");
+            DrawText(fileData, 800, 600, 20, BLACK);
+            UnloadFileText(fileData);
+        }
 
         EndDrawing();
     }
@@ -812,7 +900,6 @@ int main(void)
     UnloadTexture(background);
     UnloadTexture(solo);
     UnloadTexture(armadilhas);
-
     UnloadTexture(jogadorNascer);
     UnloadTexture(jogadorMorrer);
 
