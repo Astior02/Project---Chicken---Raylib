@@ -1,5 +1,5 @@
-Nome: sub     Tempo: 14.2 segundos
-Nome: errado     Tempo: 14.2 segundos
-Nome: bug     Tempo: 20.0 segundos
-Nome: Funciona     Tempo: 25.0 segundos
-Nome: 5 posicao     Tempo: 33.4 segundos
+Nome: casa     Tempo: 1.1 segundos
+Nome: casa     Tempo: 1.4 segundos
+Nome: casa     Tempo: 1.7 segundos
+Nome: oi     Tempo: 3.1 segundos
+Nome: oi     Tempo: 3.6 segundos

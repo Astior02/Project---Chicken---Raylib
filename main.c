@@ -13,13 +13,14 @@ int larguraFase = 8916;
 float playerX = 30;
 float playerY = 500;
 bool direcao = true; // true direita, false esquerda
-float playerVelocidade = 200.0f;
+float playerVelocidade = 100.0f;
 int vida = 0; // -1 morreu, 0 vivendo, 1 nasceu
 
 // -- checkpoint/ Vitória
 
 int playerCkeckpointX = 30, playerCkeckpointY = 500;
 bool vitoria = false;
+float tempoRun = 0.0f;
 
 // -- variáveis para pulo
 
@@ -46,15 +47,71 @@ bool podeControlarPlayer = true;    // Controla se o jogador pode se mover
 bool dashAtivo = false;
 float dashVelocidade = 200.0f;
 float dashTempo;
-float dashDuracao = 0.4f;
+float dashDuracao = 0.7f;
 bool dashVertical = false;
 bool dashVerticalUsadoNoAr = false;
+int dashHorizontalUsosNoAr = 0;
+int dashHorizontalMaxUsos = 2;
 
 // -- variáveis para colisao
 bool colisaoDireita = false;
 bool colisaoEsquerda = false;
 bool grudandoParede = false;
 float velocidadeDescidaParede = 100.0f;
+
+void reiniciarGame()
+{
+
+    tempoJogo = 0.0f;
+    tamanhoTelaX = 1280;
+    tamanhoTelaY = 720;
+    larguraFase = 8916;
+    playerX = 30;
+    playerY = 500;
+    direcao = true; // true direita, false esquerda
+    playerVelocidade = 200.0f;
+    vida = 0; // -1 morreu, 0 vivendo, 1 nasceu
+
+    // -- checkpoint/ Vitória
+
+    playerCkeckpointX = 30, playerCkeckpointY = 500;
+    vitoria = false;
+
+    // -- variáveis para pulo
+
+    velocidadePuloY = 0.0f;
+    podePular = true;
+    focarPuloInicial = -400.0f;
+    gravidadeAceleracao = 800.0f;
+
+    // -- variáveis de animação
+
+    frameAtual = 0;
+    contadorFrames = 0;
+    estadoAnimacao = -1;
+
+    // --- variaveis de animação viva/morte
+    tempoAnimacaoMorte = 0.0f;
+    duracaoAnimacaoMorte = 1.0f; // Duração da animação de morte
+    tempoAnimacaoNascer = 0.0f;
+    duracaoAnimacaoNascer = 1.0f; // Duração da animação de nascimento
+    podeControlarPlayer = true;   // Controla se o jogador pode se mover
+
+    // -- variáveis para dash
+
+    dashAtivo = false;
+    dashVelocidade = 200.0f;
+    dashTempo;
+    dashDuracao = 0.4f;
+    dashVertical = false;
+    dashVerticalUsadoNoAr = false;
+
+    // -- variáveis para colisao
+    colisaoDireita = false;
+    colisaoEsquerda = false;
+    grudandoParede = false;
+    velocidadeDescidaParede = 100.0f;
+}
 
 typedef struct
 {
@@ -335,9 +392,17 @@ void cameraPrincipal(Camera2D *camera)
 
 void pulo(float tempo)
 {
-    velocidadePuloY += gravidadeAceleracao * tempo;
+    if (velocidadePuloY > 0) // Está caindo
+    {
+        velocidadePuloY += (gravidadeAceleracao * 0.3f) * tempo; // Cai devagar
+    }
 
-    if ((IsKeyPressed(KEY_UP) || IsKeyDown(KEY_UP)) && podePular)
+    else // Está subindo ou parado
+    {
+        velocidadePuloY += gravidadeAceleracao * tempo; // Gravidade normal
+    }
+
+    if ((IsKeyPressed(KEY_UP) /*|| IsKeyDown(KEY_UP)*/ && podePular && !grudandoParede))
     {
 
         velocidadePuloY = focarPuloInicial;
@@ -363,16 +428,18 @@ bool focoCaixaRank = true;
 
 Ranking jogadorRank = {"", 0.0f};
 
-void desenharRanking()
+void desenharRanking(Texture2D fundoRank)
 {
     ClearBackground(WHITE);
+
+    DrawTexture(fundoRank, 0, 0, WHITE);
+
     static bool salvou = false;
     static bool rankingCarregado = false;
     static Ranking ranking[MAX_RANK];
     static int totalRanking = 0;
 
-    Rectangle caixaTexto = {40, tamanhoTelaY - 80, 300, 40};
-
+    Rectangle caixaTexto = {40, tamanhoTelaY - 150, 300, 40};
 
     // carrega o ranking 1 vez
     if (!rankingCarregado && FileExists("ranking.txt"))
@@ -383,7 +450,7 @@ void desenharRanking()
         while (!feof(file) && totalRanking < MAX_RANK)
         {
 
-            fscanf(file, "Nome: %s\nTempo: %f segundos\n", ranking[totalRanking].nome, &ranking[totalRanking].tempo);
+            fscanf(file, "Nome: %s      Tempo: %f segundos\n", ranking[totalRanking].nome, &ranking[totalRanking].tempo);
             totalRanking++;
         }
 
@@ -392,18 +459,18 @@ void desenharRanking()
     }
 
     // Controle da caixa de texto para digitar o nome
-    if (GuiTextBox(caixaTexto, jogadorRank.nome, MAX_NOME, focoCaixaRank))
+    if (GuiTextBox(caixaTexto, jogadorRank.nome, MAX_NOME, !salvou))
     {
-        focoCaixaRank = !focoCaixaRank;
+        // focoCaixaRank = !focoCaixaRank;
     }
 
     // Salvamento do ranking
-    if (IsKeyPressed(KEY_ENTER))
+    if (IsKeyPressed(KEY_ENTER) && !salvou)
     {
         if (strlen(jogadorRank.nome) > 0)
         {
 
-            jogadorRank.tempo = tempoJogo;
+            jogadorRank.tempo = tempoRun;
 
             // adiciona um novo ranking
 
@@ -449,11 +516,6 @@ void desenharRanking()
             salvou = true;
         }
 
-        if (salvou = true){
-
-            
-        }
-
         focoCaixaRank = false;
     }
 
@@ -476,7 +538,6 @@ void desenharRanking()
     int posX = (tamanhoTelaX - larguraTexto) / 2;
     DrawText(titulo, posX, 300, fonte, DARKBLUE);
 
-
     for (int i = 0; i < totalRanking; i++)
     {
         char linha[50]; // linha formatada: nome + tempo
@@ -487,6 +548,23 @@ void desenharRanking()
         int posX = (tamanhoTelaX - larguraTexto) / 2;
 
         DrawText(linha, posX, 340 + i * 30, fonte, BLACK);
+    }
+
+    // - - Reiniciar Game
+
+    const char *textoReiniciar = "Pressione Espaço para jogar novamente";
+    int fonteTextoReiniciar = 24;
+    int larguraTextoRestart = MeasureText(textoReiniciar, fonteTextoReiniciar);
+    int posicaoXRestartTexto = (tamanhoTelaX - larguraTextoRestart) / 2;
+    int posicaoYRestartTexto = tamanhoTelaY - 60;
+    DrawText(textoReiniciar, posicaoXRestartTexto, posicaoYRestartTexto, fonteTextoReiniciar, WHITE);
+
+    if (IsKeyPressed(KEY_SPACE))
+    {
+        reiniciarGame();
+        jogadorRank = (Ranking){"", 0.0f};
+        salvou = false;
+        vitoria = false;
     }
 }
 
@@ -503,8 +581,8 @@ int main(void)
     // -- CARREGAR TEXTURA DO CENÁRIO
 
     Texture2D background = LoadTexture("sprites/Mapa_completo.png");
-    Texture2D solo = LoadTexture("sprites/Cenario/fase_blocos_1.png");
-    Texture2D armadilhas = LoadTexture("sprites/Cenario/fase_espinhos_1.png");
+    Texture2D fundoRank = LoadTexture("sprites/Cenario/fundoRank.png");
+    Texture2D FundoMenu = LoadTexture("sprites/Fundo_Menu.png");
 
     // -- CARREGAR SPRITE DO PLAYER
 
@@ -520,17 +598,88 @@ int main(void)
     // -- plataformas ok
     ObjetosCena plataforma[] = {
 
+        // foi aqui q eu mexi, MAYKON
+        {(Rectangle){0, 672, 100, 96}, true, BLUE},
+        {(Rectangle){0, 319, 188, 32}, true, BLUE},
+        {(Rectangle){20, 287, 32, 96}, true, BLUE},
+        {(Rectangle){256, 383, 32, 223}, true, BLUE},
+        {(Rectangle){354, 0, 29, 540}, true, BLUE},
+        {(Rectangle){354, 225, 636, 29}, true, BLUE},
+        {(Rectangle){670, 415, 32, 32}, true, BLUE},
+        {(Rectangle){540, 510, 64, 32}, true, BLUE},
+        {(Rectangle){766, 320, 32, 32}, true, BLUE},
+        {(Rectangle){894, 320, 32, 32}, true, BLUE},
+        {(Rectangle){1025, 364, 96, 96}, true, BLUE},
+        {(Rectangle){1366, 672, 160, 64}, true, BLUE},
+        {(Rectangle){1620, 608, 96, 32}, true, BLUE},
+        {(Rectangle){1846, 546, 32, 32}, true, BLUE},
+        {(Rectangle){1940, 514, 32, 32}, true, BLUE},
+        {(Rectangle){1878, 448, 28, 32}, true, BLUE},
+        {(Rectangle){1814, 416, 32, 32}, true, BLUE},
+        {(Rectangle){1718, 416, 32, 32}, true, BLUE},
+        {(Rectangle){1780, 318, 32, 32}, true, BLUE},
+        {(Rectangle){1748, 250, 28, 28}, true, BLUE},
+        {(Rectangle){1812, 250, 28, 28}, true, BLUE},
+        {(Rectangle){2036, 318, 192, 64}, true, BLUE},
+        {(Rectangle){2324, 0, 32, 284}, true, BLUE},
+        {(Rectangle){2324, 356, 32, 364}, true, BLUE},
+        {(Rectangle){2452, 0, 32, 254}, true, BLUE},
+        {(Rectangle){2452, 324, 32, 396}, true, BLUE},
+        {(Rectangle){2580, 0, 32, 412}, true, BLUE},
+        {(Rectangle){2580, 478, 32, 364}, true, BLUE},
+        {(Rectangle){2708, 0, 32, 608}, true, BLUE},
+        {(Rectangle){2708, 672, 32, 364}, true, BLUE},
+        {(Rectangle){2772, 640, 96, 96}, true, BLUE},
+        {(Rectangle){2958, 608, 32, 32}, true, BLUE},
+        {(Rectangle){3122, 578, 96, 160}, true, BLUE},
+        {(Rectangle){3246, 578, 224, 32}, true, BLUE},
+        {(Rectangle){3646, 606, 96, 40}, true, BLUE},
+        {(Rectangle){3864, 670, 144, 64}, true, BLUE},
+        {(Rectangle){4076, 198, 32, 472}, true, BLUE},
+        {(Rectangle){4080, 196, 212, 32}, true, BLUE},
+        {(Rectangle){4236, 198, 32, 376}, true, BLUE},
+        {(Rectangle){4380, 0, 32, 600}, true, BLUE},
+        {(Rectangle){4268, 700, 148, 32}, true, BLUE},
+        {(Rectangle){4556, 672, 600, 64}, true, BLUE},
+        {(Rectangle){5188, 492, 64, 222}, true, BLUE},
+        {(Rectangle){5188, 0, 64, 428}, true, BLUE},
+        {(Rectangle){5350, 150, 64, 428}, true, BLUE},
+        {(Rectangle){5462, 170, 158, 80}, true, BLUE},
+        {(Rectangle){5716, 712, 164, 32}, true, BLUE},
+        {(Rectangle){5944, 674, 156, 64}, true, BLUE},
+        {(Rectangle){6194, 640, 32, 32}, true, BLUE},
+        {(Rectangle){6310, 0, 68, 600}, true, BLUE},
+        {(Rectangle){6310, 672, 148, 64}, true, BLUE},
+        {(Rectangle){6496, 608, 64, 32}, true, BLUE},
+        {(Rectangle){6592, 544, 32, 32}, true, BLUE},
+        {(Rectangle){6720, 544, 96, 32}, true, BLUE},
+        {(Rectangle){6910, 552, 32, 116}, true, BLUE},
+        {(Rectangle){6974, 708, 96, 32}, true, BLUE},
+        {(Rectangle){7102, 644, 96, 32}, true, BLUE},
+        {(Rectangle){7102, 580, 96, 32}, true, BLUE},
+        {(Rectangle){7264, 554, 22, 116}, true, BLUE},
+        {(Rectangle){7328, 426, 22, 116}, true, BLUE},
+        {(Rectangle){7448, 420, 92, 22}, true, BLUE},
+        {(Rectangle){7680, 320, 22, 92}, true, BLUE},
+        {(Rectangle){7524, 326, 92, 22}, true, BLUE},
+        {(Rectangle){7486, 224, 26, 92}, true, BLUE},
+        {(Rectangle){7550, 196, 188, 32}, true, BLUE},
+        {(Rectangle){7834, 228, 188, 32}, true, BLUE},
+        {(Rectangle){8096, 0, 32, 368}, true, BLUE},
+        {(Rectangle){7958, 484, 64, 32}, true, BLUE},
+        {(Rectangle){8086, 546, 64, 32}, true, BLUE},
+        {(Rectangle){8214, 484, 64, 32}, true, BLUE},
+        {(Rectangle){8278, 516, 32, 32}, true, BLUE},
+        {(Rectangle){8374, 388, 32, 96}, true, BLUE},
+        {(Rectangle){8470, 388, 32, 32}, true, BLUE},
+        {(Rectangle){8596, 452, 32, 32}, true, BLUE},
+        {(Rectangle){8660, 452, 32, 32}, true, BLUE},
+        {(Rectangle){8692, 420, 182, 32}, true, BLUE},
+
+        // BARREIRAS DO MUNDO
         {(Rectangle){0, 0, 20, 1000}, true, BLUE},
-        //{(Rectangle){0, 710, 1000, 20}, true, BLUE},
-
-        {(Rectangle){0, 672, 100, 20}, true, BLUE},
-        {(Rectangle){150, 200, 50, 1000}, true, BLUE},
-        {(Rectangle){300, 200, 50, 1000}, true, BLUE},
-        {(Rectangle){600, 500, 50, 1000}, true, BLUE},
-
-        {(Rectangle){300, 672, 200, 20}, true, BLUE},
-        {(Rectangle){600, 672, 150, 20}, true, BLUE},
-        {(Rectangle){850, 672, 100, 20}, true, BLUE}
+        {(Rectangle){0, 0, 8912, 16}, true, BLUE},
+        {(Rectangle){8912, 0, 32, 732}, true, BLUE},
 
     };
 
@@ -540,11 +689,104 @@ int main(void)
 
     ObjetosCena plataformaArmadihas[] = {
 
-        {(Rectangle){0, 710, 1000, 20}, true, RED},
+        //{(Rectangle){0, 710, 1000, 20}, true, RED},
+        {(Rectangle){188, 319, 6, 32}, true, RED},
+        {(Rectangle){256, 650, 384, 16}, true, RED},
+        {(Rectangle){614, 450, 16, 224}, true, RED},
+        {(Rectangle){710, 396, 64, 16}, true, RED},
+        {(Rectangle){742, 360, 16, 64}, true, RED},
+        {(Rectangle){770, 332, 128, 16}, true, RED},
+        {(Rectangle){770, 256, 224, 16}, true, RED},
+        {(Rectangle){1432, 128, 28, 492}, true, RED},
+        {(Rectangle){1756, 550, 26, 26}, true, RED},
+        {(Rectangle){1944, 506, 28, 10}, true, RED},
+        {(Rectangle){1880, 482, 24, 28}, true, RED},
+        {(Rectangle){1818, 410, 42, 42}, true, RED},
+        {(Rectangle){1784, 322, 32, 32}, true, RED},
+        {(Rectangle){1752, 260, 32, 32}, true, RED},
+        {(Rectangle){1808, 260, 32, 32}, true, RED},
+        {(Rectangle){1886, 230, 18, 18}, true, RED},
+        {(Rectangle){1916, 166, 18, 18}, true, RED},
+        {(Rectangle){1948, 198, 18, 18}, true, RED},
+        {(Rectangle){1980, 230, 18, 18}, true, RED},
+        {(Rectangle){2012, 262, 18, 18}, true, RED},
+        {(Rectangle){2900, 672, 192, 96}, true, RED},
+        {(Rectangle){3540, 555, 18, 542}, true, RED},
+        {(Rectangle){3540, 358, 18, 146}, true, RED},
+        {(Rectangle){4376, 0, 10, 600}, true, RED},
+        {(Rectangle){4262, 256, 8, 32}, true, RED},
+        {(Rectangle){4262, 352, 8, 32}, true, RED},
+        {(Rectangle){4262, 448, 8, 32}, true, RED},
+        {(Rectangle){4262, 544, 8, 32}, true, RED},
+        {(Rectangle){4306, 296, 18, 18}, true, RED},
+        {(Rectangle){4344, 426, 18, 18}, true, RED},
+        {(Rectangle){4312, 550, 18, 18}, true, RED},
+        {(Rectangle){4780, 640, 26, 32}, true, RED},
+        {(Rectangle){4844, 670, 26, 10}, true, RED},
+        {(Rectangle){4944, 646, 18, 18}, true, RED},
+        {(Rectangle){4944, 582, 18, 18}, true, RED},
+        {(Rectangle){5014, 600, 36, 36}, true, RED},
+        {(Rectangle){5082, 670, 50, 10}, true, RED},
+        {(Rectangle){5320, 248, 48, 80}, true, RED},
+        {(Rectangle){5250, 100, 48, 80}, true, RED},
+        {(Rectangle){5706, 142, 64, 70}, true, RED},
+        {(Rectangle){5738, 32, 64, 70}, true, RED},
+        {(Rectangle){5614, 274, 32, 32}, true, RED},
+        {(Rectangle){5614, 274, 32, 32}, true, RED},
+        {(Rectangle){5658, 322, 36, 36}, true, RED},
+        {(Rectangle){5850, 332, 64, 64}, true, RED},
+        {(Rectangle){5760, 428, 64, 64}, true, RED},
+        {(Rectangle){5624, 624, 64, 64}, true, RED},
+        {(Rectangle){6162, 682, 96, 50}, true, RED},
+        {(Rectangle){6650, 448, 48, 48}, true, RED},
+        {(Rectangle){6650, 598, 48, 48}, true, RED},
+        {(Rectangle){6876, 410, 36, 100}, true, RED},
+        {(Rectangle){6942, 506, 26, 26}, true, RED},
+        {(Rectangle){7198, 644, 32, 32}, true, RED},
+        {(Rectangle){7556, 416, 100, 28}, true, RED},
+        {(Rectangle){7384, 322, 96, 28}, true, RED},
+        {(Rectangle){7756, 170, 48, 52}, true, RED},
+        {(Rectangle){7864, 64, 48, 48}, true, RED},
+        {(Rectangle){7916, 200, 42, 32}, true, RED},
+        {(Rectangle){8032, 376, 48, 48}, true, RED},
+        {(Rectangle){8032, 528, 48, 48}, true, RED},
+        {(Rectangle){8184, 508, 32, 32}, true, RED},
+        {(Rectangle){8278, 420, 32, 32}, true, RED},
+        {(Rectangle){842, 484, 32, 32}, true, RED},
+        {(Rectangle){8342, 484, 32, 32}, true, RED},
+        {(Rectangle){8534, 420, 32, 32}, true, RED},
+
+        // FUNDO DA MORTE
+        //{(Rectangle){0, 732, 9000, 16}, true, BLUE},
 
     };
 
     int numPlataformasArmadilhas = sizeof(plataformaArmadihas) / sizeof(plataformaArmadihas[0]);
+
+    // -- plataformas de checkpoint/vitória
+
+    ObjetosCena plataformaCheckpoint[] = {
+
+        {(Rectangle){560, 450, 20, 100}, true, YELLOW},
+        {(Rectangle){3343, 500, 20, 100}, true, YELLOW},
+        {(Rectangle){4648, 570, 20, 100}, true, YELLOW},
+        {(Rectangle){5496, 100, 20, 100}, true, YELLOW},
+        {(Rectangle){6400, 570, 20, 100}, true, YELLOW},
+        {(Rectangle){7620, 100, 20, 100}, true, YELLOW},
+
+    };
+
+    int numPlataformasCheckpoint = sizeof(plataformaCheckpoint) / sizeof(plataformaCheckpoint[0]);
+
+    ObjetosCena plataformaVitoria[] = {
+
+        {(Rectangle){8800, 350, 20, 100}, true, PURPLE},
+
+        // {(Rectangle){100, 0, 20,100000000000000000000 }, true, PURPLE},
+
+    };
+
+    int numPlataformasVitoria = sizeof(plataformaVitoria) / sizeof(plataformaVitoria[0]);
 
     while (!WindowShouldClose())
     {
@@ -591,11 +833,12 @@ int main(void)
                 dashVerticalUsadoNoAr = true; // Marca que o dash vertical foi usado
             }
 
-            else if (IsKeyPressed(KEY_LEFT_SHIFT) && (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) && !dashAtivo && !grudandoParede)
+            else if (IsKeyPressed(KEY_LEFT_SHIFT) && (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) && !dashAtivo && !grudandoParede && dashHorizontalUsosNoAr < dashHorizontalMaxUsos )
             {
                 dashVertical = false;
                 dashAtivo = true;
                 dashTempo = dashDuracao;
+                dashHorizontalUsosNoAr++;
             }
 
             if (dashAtivo)
@@ -605,10 +848,13 @@ int main(void)
 
                 if (dashVertical)
                 {
+                    velocidadePuloY = -1;
+
                     playerY -= dashVelocidade * tempoDoFrame;
                 }
                 else
                 {
+                    velocidadePuloY = 0;
 
                     if (direcao)
                     {
@@ -629,8 +875,8 @@ int main(void)
             }
             else
             {
-                pulo(GetFrameTime());
-                movimentoHorizontal(GetFrameTime());
+                pulo(tempoDoFrame);
+                movimentoHorizontal(tempoDoFrame);
             }
         }
 
@@ -657,47 +903,40 @@ int main(void)
                     dashVerticalUsadoNoAr = false; // Reseta o dash vertical ao tocar o chão
                 }
                 // Colisão por baixo
-                else if (playerRect.y - velocidadePuloY * tempoDoFrame >= plataforma[i].retangulo.y + plataforma[i].retangulo.height && velocidadePuloY < 0)
+                else if (
+                    playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height &&      // topo do player acima da parte de baixo da plataforma
+                    playerRect.y > plataforma[i].retangulo.y + plataforma[i].retangulo.height - 100 && // margem de tolerância (100 pixels)
+                    velocidadePuloY < 0)
                 {
                     playerY = plataforma[i].retangulo.y + plataforma[i].retangulo.height;
-                    velocidadePuloY = 0.0f;
+                    velocidadePuloY = -1;
                 }
 
-                // Colisão pela direita
-                else if (playerRect.x + playerRect.width >= plataforma[i].retangulo.x &&
-                         playerRect.x < plataforma[i].retangulo.x &&
-                         playerRect.y + playerRect.height > plataforma[i].retangulo.y &&
-                         playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height)
+                // colisao direita
+
+                else if (playerRect.x + playerRect.width > plataforma[i].retangulo.x &&
+                         playerRect.x < plataforma[i].retangulo.x)
                 {
-
-                    if (dashAtivo)
-                    {
-
-                        dashAtivo = false;
-                    }
-
                     playerX = plataforma[i].retangulo.x - playerRect.width;
-
                     grudandoParede = true;
-                }
-
-                // colisao pela esquerda
-
-                else if (playerRect.x < plataforma[i].retangulo.x + plataforma[i].retangulo.width &&
-                         playerRect.x + playerRect.width > plataforma[i].retangulo.x + plataforma[i].retangulo.width - (velocidadePuloY * tempoDoFrame) &&
-                         playerRect.y + playerRect.height > plataforma[i].retangulo.y + (velocidadePuloY * tempoDoFrame) &&
-                         playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height - (velocidadePuloY * tempoDoFrame))
-                {
-
                     if (dashAtivo)
                     {
 
                         dashAtivo = false;
                     }
+                }
 
+                // Colisão pela esquerda (player encosta na lateral direita da plataforma)
+                else if (playerRect.x < plataforma[i].retangulo.x + plataforma[i].retangulo.width &&
+                         playerRect.x + playerRect.width > plataforma[i].retangulo.x + plataforma[i].retangulo.width)
+                {
                     playerX = plataforma[i].retangulo.x + plataforma[i].retangulo.width;
-
                     grudandoParede = true;
+                    if (dashAtivo)
+                    {
+
+                        dashAtivo = false;
+                    }
                 }
             }
         }
@@ -713,9 +952,18 @@ int main(void)
         {
 
             gravidadeAceleracao = 1800.0f;
-            velocidadePuloY = 0.0f;
+            velocidadePuloY = -1;
             podePular = true;
             dashVerticalUsadoNoAr = false; // Reseta o dash vertical ao grudar na parede
+
+            dashHorizontalUsosNoAr = 0;
+
+            if (IsKeyDown(KEY_UP))
+            {
+                velocidadePuloY = -1;
+
+                playerY -= 200.0f * tempoDoFrame;
+            }
         }
         else
         {
@@ -723,9 +971,11 @@ int main(void)
             velocidadePuloY = 0.0f;
             podePular = true;
             dashVerticalUsadoNoAr = false; // Reseta o dash vertical ao tocar o chão
+
+            dashHorizontalUsosNoAr = 0;
         }
 
-        // --- colisao com armadilhas
+        // --- colisao com armadilhas/Respaw
         for (int i = 0; i < numPlataformasArmadilhas; i++)
         {
             if (CheckCollisionRecs(playerRect, plataformaArmadihas[i].retangulo) && plataformaArmadihas[i].solido)
@@ -736,6 +986,28 @@ int main(void)
                     podeControlarPlayer = false; // Desativa o controle
                     tempoAnimacaoMorte = 0.0f;   // Reinicia o tempo da animação de morte
                 }
+            }
+        }
+
+        // -- colisao com respanw
+
+        for (int i = 0; i < numPlataformasCheckpoint; i++)
+        {
+            if (CheckCollisionRecs(playerRect, plataformaCheckpoint[i].retangulo) && plataformaCheckpoint[i].solido)
+            {
+                playerCkeckpointX = plataformaCheckpoint[i].retangulo.x;
+                playerCkeckpointY = plataformaCheckpoint[i].retangulo.y;
+            }
+        }
+
+        // -- colisao vitoria
+
+        for (int i = 0; i < numPlataformasVitoria; i++)
+        {
+            if (CheckCollisionRecs(playerRect, plataformaVitoria[i].retangulo) && plataformaVitoria[i].solido)
+            {
+                vitoria = true;
+                tempoRun = tempoJogo;
             }
         }
 
@@ -792,22 +1064,37 @@ int main(void)
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
-        DrawText("PROJECT CHICKEN", 400, 50, 30, RED);
-
         BeginMode2D(cameraPlayer);
 
         desenhaCenario(background);
 
         // Desenha plataformas
 
+        // -- plataformas ok
+
         for (int i = 0; i < numPlataformas; i++)
         {
             DrawRectangleRec(plataforma[i].retangulo, plataforma[i].cor);
         }
 
+        //-- plataformas armadilhas
+
         for (int i = 0; i < numPlataformasArmadilhas; i++)
         {
             DrawRectangleRec(plataformaArmadihas[i].retangulo, plataformaArmadihas[i].cor);
+        }
+
+        // -- plataforma Checkpoint
+        for (int i = 0; i < numPlataformasCheckpoint; i++)
+        {
+            DrawRectangleRec(plataformaCheckpoint[i].retangulo, plataformaCheckpoint[i].cor);
+        }
+
+        // -- plataforma vitoria
+
+        for (int i = 0; i < numPlataformasVitoria; i++)
+        {
+            DrawRectangleRec(plataformaVitoria[i].retangulo, plataformaVitoria[i].cor);
         }
 
         // Chama animacao do player
@@ -878,14 +1165,38 @@ int main(void)
         }
         DrawText(estadoPlayerTexto, 10, 10, 20, estadoPlayerCor); // Posição (10, 10) na tela
 
-        desenharRanking();
+        // DEBUG: Mostrar posição do player no canto superior direito
+        char posicaoTexto[50];
+        snprintf(posicaoTexto, sizeof(posicaoTexto), "X: %.1f | Y: %.1f", playerX, playerY);
+        int tmanhoT = MeasureText(posicaoTexto, 20);
+        DrawText(posicaoTexto, tamanhoTelaX - tmanhoT - 10, 10, 20, DARKGRAY);
 
-        if (FileExists("ranking.txt"))
+        if (IsKeyPressed(KEY_SPACE))
         {
-            DrawText("Último ranking salvo:", 800, 580, 20, DARKGRAY);
-            char *fileData = LoadFileText("ranking.txt");
-            DrawText(fileData, 800, 600, 20, BLACK);
-            UnloadFileText(fileData);
+            tempoJogo = 0;
+            podeControlarPlayer = true;
+            FundoMenu = LoadTexture("sprites/Fundo_Nulo.png");
+        };
+
+        // DEBUG: Mostrar velocidadePuloY no canto superior direito
+        char textoVelocidade[50];
+        snprintf(textoVelocidade, sizeof(textoVelocidade), "velocidadePuloY: %.2f", velocidadePuloY);
+        int larguraVelocidade = MeasureText(textoVelocidade, 20);
+        DrawText(textoVelocidade, tamanhoTelaX - larguraVelocidade - 10, 40, 20, MAROON);
+        DrawTexture(FundoMenu, 0, 0, WHITE);
+
+        if (vitoria)
+        {
+
+            desenharRanking(fundoRank);
+
+            /*if (FileExists("ranking.txt"))
+            {
+                DrawText("Último ranking salvo:", 800, 580, 20, DARKGRAY);
+                char *fileData = LoadFileText("ranking.txt");
+                DrawText(fileData, 800, 600, 20, BLACK);
+                UnloadFileText(fileData);
+            }*/
         }
 
         EndDrawing();
@@ -898,8 +1209,6 @@ int main(void)
     UnloadTexture(jogadorDash);
     UnloadTexture(jogadorParede);
     UnloadTexture(background);
-    UnloadTexture(solo);
-    UnloadTexture(armadilhas);
     UnloadTexture(jogadorNascer);
     UnloadTexture(jogadorMorrer);
 
