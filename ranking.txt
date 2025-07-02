@@ -1,5 +1,5 @@
 Nome: casa     Tempo: 1.1 segundos
 Nome: casa     Tempo: 1.4 segundos
 Nome: casa     Tempo: 1.7 segundos
-Nome: oi     Tempo: 3.1 segundos
-Nome: oi     Tempo: 3.6 segundos
+Nome: casa     Tempo: 1.7 segundos
+Nome: oi     Tempo: 2.1 segundos

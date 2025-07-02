@@ -383,14 +383,26 @@ void movimentoHorizontal(float tempo)
 void cameraPrincipal(Camera2D *camera)
 {
     float inicioFase = tamanhoTelaX / 2.0f;
+    float fimFase = larguraFase - tamanhoTelaX / 2.0f;
 
-    camera->target = (Vector2){fmaxf(inicioFase, playerX), tamanhoTelaY / 2.0f}; // segue o player
-    camera->offset = (Vector2){tamanhoTelaX / 2.0f, tamanhoTelaY / 2.0f};        // Centraliza
+    float alvoX = playerX;
+
+    if (alvoX < inicioFase)
+    {
+        alvoX = inicioFase;
+    }
+    if (alvoX > fimFase)
+    {
+        alvoX = fimFase;
+    }
+
+    camera->target = (Vector2){alvoX, tamanhoTelaY / 2.0f};               // segue o player
+    camera->offset = (Vector2){tamanhoTelaX / 2.0f, tamanhoTelaY / 2.0f}; // Centraliza
     camera->rotation = 0.0f;
     camera->zoom = 1.0f;
 }
 
-void pulo(float tempo)
+void pulo(float tempo, Sound somPulo)
 {
     if (velocidadePuloY > 0) // Está caindo
     {
@@ -406,6 +418,8 @@ void pulo(float tempo)
     {
 
         velocidadePuloY = focarPuloInicial;
+
+        PlaySound(somPulo);
     }
 
     playerY += velocidadePuloY * tempo;
@@ -540,7 +554,7 @@ void desenharRanking(Texture2D fundoRank)
 
     for (int i = 0; i < totalRanking; i++)
     {
-        char linha[50]; // linha formatada: nome + tempo
+        char linha[50]; // formata o texto do ranking
         snprintf(linha, sizeof(linha), "%d. %s - %.1fs", i + 1, ranking[i].nome, ranking[i].tempo);
 
         int fonte = 20;
@@ -571,11 +585,33 @@ void desenharRanking(Texture2D fundoRank)
 int main(void)
 {
 
-    // tentando criar arquivo txt
-
     Camera2D cameraPlayer;
 
+    InitAudioDevice();
+
+    // -- CARREGAR AUDIO DO JOGO
+    Sound somPulo = LoadSound("audio/somPulo.mp3");
+    SetSoundVolume(somPulo, 0.1f);
+
+    Sound somDash = LoadSound("audio/somDash.mp3");
+    SetSoundVolume(somDash, 5.0f);
+
+    Sound somVitoria = LoadSound("audio/somVitoria.mp3");
+    SetSoundVolume(somVitoria, 0.5f);
+
+    Sound somNascer = LoadSound("audio/somNascendo.mp3");
+    SetSoundVolume(somNascer, 0.5f);
+
+    Music somTemaC = LoadMusicStream("audio/somTemaC.mp3");
+    SetMusicVolume(somTemaC, 0.03f);
+
+    PlayMusicStream(somTemaC);
+
+    Sound somMorrendo = LoadSound("audio/somMorrendo.mp3");
+    SetSoundVolume(somMorrendo, 0.5f);
+
     InitWindow(tamanhoTelaX, tamanhoTelaY, "Project Chicken");
+
     SetTargetFPS(60);
 
     // -- CARREGAR TEXTURA DO CENÁRIO
@@ -599,87 +635,87 @@ int main(void)
     ObjetosCena plataforma[] = {
 
         // foi aqui q eu mexi, MAYKON
-        {(Rectangle){0, 672, 100, 96}, true, BLUE},
-        {(Rectangle){0, 319, 188, 32}, true, BLUE},
-        {(Rectangle){20, 287, 32, 96}, true, BLUE},
-        {(Rectangle){256, 383, 32, 223}, true, BLUE},
-        {(Rectangle){354, 0, 29, 540}, true, BLUE},
-        {(Rectangle){354, 225, 636, 29}, true, BLUE},
-        {(Rectangle){670, 415, 32, 32}, true, BLUE},
-        {(Rectangle){540, 510, 64, 32}, true, BLUE},
-        {(Rectangle){766, 320, 32, 32}, true, BLUE},
-        {(Rectangle){894, 320, 32, 32}, true, BLUE},
-        {(Rectangle){1025, 364, 96, 96}, true, BLUE},
-        {(Rectangle){1366, 672, 160, 64}, true, BLUE},
-        {(Rectangle){1620, 608, 96, 32}, true, BLUE},
-        {(Rectangle){1846, 546, 32, 32}, true, BLUE},
-        {(Rectangle){1940, 514, 32, 32}, true, BLUE},
-        {(Rectangle){1878, 448, 28, 32}, true, BLUE},
-        {(Rectangle){1814, 416, 32, 32}, true, BLUE},
-        {(Rectangle){1718, 416, 32, 32}, true, BLUE},
-        {(Rectangle){1780, 318, 32, 32}, true, BLUE},
-        {(Rectangle){1748, 250, 28, 28}, true, BLUE},
-        {(Rectangle){1812, 250, 28, 28}, true, BLUE},
-        {(Rectangle){2036, 318, 192, 64}, true, BLUE},
-        {(Rectangle){2324, 0, 32, 284}, true, BLUE},
-        {(Rectangle){2324, 356, 32, 364}, true, BLUE},
-        {(Rectangle){2452, 0, 32, 254}, true, BLUE},
-        {(Rectangle){2452, 324, 32, 396}, true, BLUE},
-        {(Rectangle){2580, 0, 32, 412}, true, BLUE},
-        {(Rectangle){2580, 478, 32, 364}, true, BLUE},
-        {(Rectangle){2708, 0, 32, 608}, true, BLUE},
-        {(Rectangle){2708, 672, 32, 364}, true, BLUE},
-        {(Rectangle){2772, 640, 96, 96}, true, BLUE},
-        {(Rectangle){2958, 608, 32, 32}, true, BLUE},
-        {(Rectangle){3122, 578, 96, 160}, true, BLUE},
-        {(Rectangle){3246, 578, 224, 32}, true, BLUE},
-        {(Rectangle){3646, 606, 96, 40}, true, BLUE},
-        {(Rectangle){3864, 670, 144, 64}, true, BLUE},
-        {(Rectangle){4076, 198, 32, 472}, true, BLUE},
-        {(Rectangle){4080, 196, 212, 32}, true, BLUE},
-        {(Rectangle){4236, 198, 32, 376}, true, BLUE},
-        {(Rectangle){4380, 0, 32, 600}, true, BLUE},
-        {(Rectangle){4268, 700, 148, 32}, true, BLUE},
-        {(Rectangle){4556, 672, 600, 64}, true, BLUE},
-        {(Rectangle){5188, 492, 64, 222}, true, BLUE},
-        {(Rectangle){5188, 0, 64, 428}, true, BLUE},
-        {(Rectangle){5350, 150, 64, 428}, true, BLUE},
-        {(Rectangle){5462, 170, 158, 80}, true, BLUE},
-        {(Rectangle){5716, 712, 164, 32}, true, BLUE},
-        {(Rectangle){5944, 674, 156, 64}, true, BLUE},
-        {(Rectangle){6194, 640, 32, 32}, true, BLUE},
-        {(Rectangle){6310, 0, 68, 600}, true, BLUE},
-        {(Rectangle){6310, 672, 148, 64}, true, BLUE},
-        {(Rectangle){6496, 608, 64, 32}, true, BLUE},
-        {(Rectangle){6592, 544, 32, 32}, true, BLUE},
-        {(Rectangle){6720, 544, 96, 32}, true, BLUE},
-        {(Rectangle){6910, 552, 32, 116}, true, BLUE},
-        {(Rectangle){6974, 708, 96, 32}, true, BLUE},
-        {(Rectangle){7102, 644, 96, 32}, true, BLUE},
-        {(Rectangle){7102, 580, 96, 32}, true, BLUE},
-        {(Rectangle){7264, 554, 22, 116}, true, BLUE},
-        {(Rectangle){7328, 426, 22, 116}, true, BLUE},
-        {(Rectangle){7448, 420, 92, 22}, true, BLUE},
-        {(Rectangle){7680, 320, 22, 92}, true, BLUE},
-        {(Rectangle){7524, 326, 92, 22}, true, BLUE},
-        {(Rectangle){7486, 224, 26, 92}, true, BLUE},
-        {(Rectangle){7550, 196, 188, 32}, true, BLUE},
-        {(Rectangle){7834, 228, 188, 32}, true, BLUE},
-        {(Rectangle){8096, 0, 32, 368}, true, BLUE},
-        {(Rectangle){7958, 484, 64, 32}, true, BLUE},
-        {(Rectangle){8086, 546, 64, 32}, true, BLUE},
-        {(Rectangle){8214, 484, 64, 32}, true, BLUE},
-        {(Rectangle){8278, 516, 32, 32}, true, BLUE},
-        {(Rectangle){8374, 388, 32, 96}, true, BLUE},
-        {(Rectangle){8470, 388, 32, 32}, true, BLUE},
-        {(Rectangle){8596, 452, 32, 32}, true, BLUE},
-        {(Rectangle){8660, 452, 32, 32}, true, BLUE},
-        {(Rectangle){8692, 420, 182, 32}, true, BLUE},
+        {(Rectangle){0, 672, 100, 96}, true, BLANK},
+        {(Rectangle){0, 319, 188, 32}, true, BLANK},
+        {(Rectangle){20, 287, 32, 96}, true, BLANK},
+        {(Rectangle){256, 383, 32, 223}, true, BLANK},
+        {(Rectangle){354, 0, 29, 540}, true, BLANK},
+        {(Rectangle){354, 225, 636, 29}, true, BLANK},
+        {(Rectangle){670, 415, 32, 32}, true, BLANK},
+        {(Rectangle){540, 510, 64, 32}, true, BLANK},
+        {(Rectangle){766, 320, 32, 32}, true, BLANK},
+        {(Rectangle){894, 320, 32, 32}, true, BLANK},
+        {(Rectangle){1025, 364, 96, 96}, true, BLANK},
+        {(Rectangle){1366, 672, 160, 64}, true, BLANK},
+        {(Rectangle){1620, 608, 96, 32}, true, BLANK},
+        {(Rectangle){1846, 546, 32, 32}, true, BLANK},
+        {(Rectangle){1940, 514, 32, 32}, true, BLANK},
+        {(Rectangle){1878, 448, 28, 32}, true, BLANK},
+        {(Rectangle){1814, 416, 32, 32}, true, BLANK},
+        {(Rectangle){1718, 416, 32, 32}, true, BLANK},
+        {(Rectangle){1780, 318, 32, 32}, true, BLANK},
+        {(Rectangle){1748, 250, 28, 28}, true, BLANK},
+        {(Rectangle){1812, 250, 28, 28}, true, BLANK},
+        {(Rectangle){2036, 318, 192, 64}, true, BLANK},
+        {(Rectangle){2324, 0, 32, 284}, true, BLANK},
+        {(Rectangle){2324, 356, 32, 364}, true, BLANK},
+        {(Rectangle){2452, 0, 32, 254}, true, BLANK},
+        {(Rectangle){2452, 324, 32, 396}, true, BLANK},
+        {(Rectangle){2580, 0, 32, 412}, true, BLANK},
+        {(Rectangle){2580, 478, 32, 364}, true, BLANK},
+        {(Rectangle){2708, 0, 32, 608}, true, BLANK},
+        {(Rectangle){2708, 672, 32, 364}, true, BLANK},
+        {(Rectangle){2772, 640, 96, 96}, true, BLANK},
+        {(Rectangle){2958, 608, 32, 32}, true, BLANK},
+        {(Rectangle){3122, 578, 96, 160}, true, BLANK},
+        {(Rectangle){3246, 578, 224, 32}, true, BLANK},
+        {(Rectangle){3646, 606, 96, 40}, true, BLANK},
+        {(Rectangle){3864, 670, 144, 64}, true, BLANK},
+        {(Rectangle){4076, 198, 32, 472}, true, BLANK},
+        {(Rectangle){4080, 196, 212, 32}, true, BLANK},
+        {(Rectangle){4236, 198, 32, 376}, true, BLANK},
+        {(Rectangle){4380, 0, 32, 600}, true, BLANK},
+        {(Rectangle){4268, 700, 148, 32}, true, BLANK},
+        {(Rectangle){4556, 672, 600, 64}, true, BLANK},
+        {(Rectangle){5188, 492, 64, 222}, true, BLANK},
+        {(Rectangle){5188, 0, 64, 428}, true, BLANK},
+        {(Rectangle){5350, 150, 64, 350}, true, BLANK},
+        {(Rectangle){5462, 170, 158, 80}, true, BLANK},
+        {(Rectangle){5716, 712, 164, 32}, true, BLANK},
+        {(Rectangle){5944, 674, 156, 64}, true, BLANK},
+        {(Rectangle){6194, 640, 32, 32}, true, BLANK},
+        {(Rectangle){6310, 0, 68, 600}, true, BLANK},
+        {(Rectangle){6310, 672, 148, 64}, true, BLANK},
+        {(Rectangle){6496, 608, 64, 32}, true, BLANK},
+        {(Rectangle){6592, 544, 32, 32}, true, BLANK},
+        {(Rectangle){6720, 544, 96, 32}, true, BLANK},
+        {(Rectangle){6910, 552, 32, 116}, true, BLANK},
+        {(Rectangle){6974, 708, 96, 32}, true, BLANK},
+        {(Rectangle){7102, 644, 96, 32}, true, BLANK},
+        {(Rectangle){7102, 580, 96, 32}, true, BLANK},
+        {(Rectangle){7264, 554, 22, 116}, true, BLANK},
+        {(Rectangle){7328, 426, 22, 116}, true, BLANK},
+        {(Rectangle){7448, 420, 92, 22}, true, BLANK},
+        {(Rectangle){7680, 320, 22, 92}, true, BLANK},
+        {(Rectangle){7524, 326, 92, 22}, true, BLANK},
+        {(Rectangle){7486, 224, 26, 92}, true, BLANK},
+        {(Rectangle){7550, 196, 188, 32}, true, BLANK},
+        {(Rectangle){7834, 228, 188, 32}, true, BLANK},
+        {(Rectangle){8096, 0, 32, 368}, true, BLANK},
+        {(Rectangle){7958, 484, 64, 32}, true, BLANK},
+        {(Rectangle){8086, 546, 64, 32}, true, BLANK},
+        {(Rectangle){8214, 484, 64, 32}, true, BLANK},
+        {(Rectangle){8278, 516, 32, 32}, true, BLANK},
+        {(Rectangle){8374, 388, 32, 96}, true, BLANK},
+        {(Rectangle){8470, 388, 32, 32}, true, BLANK},
+        {(Rectangle){8596, 452, 32, 32}, true, BLANK},
+        {(Rectangle){8660, 452, 32, 32}, true, BLANK},
+        {(Rectangle){8692, 420, 182, 32}, true, BLANK},
 
         // BARREIRAS DO MUNDO
-        {(Rectangle){0, 0, 20, 1000}, true, BLUE},
-        {(Rectangle){0, 0, 8912, 16}, true, BLUE},
-        {(Rectangle){8912, 0, 32, 732}, true, BLUE},
+        {(Rectangle){0, 0, 20, 1000}, true, BLANK},
+        {(Rectangle){0, 0, 8912, 16}, true, BLANK},
+        {(Rectangle){8912, 0, 32, 732}, true, BLANK},
 
     };
 
@@ -689,75 +725,75 @@ int main(void)
 
     ObjetosCena plataformaArmadihas[] = {
 
-        //{(Rectangle){0, 710, 1000, 20}, true, RED},
-        {(Rectangle){188, 319, 6, 32}, true, RED},
-        {(Rectangle){256, 650, 384, 16}, true, RED},
-        {(Rectangle){614, 450, 16, 224}, true, RED},
-        {(Rectangle){710, 396, 64, 16}, true, RED},
-        {(Rectangle){742, 360, 16, 64}, true, RED},
-        {(Rectangle){770, 332, 128, 16}, true, RED},
-        {(Rectangle){770, 256, 224, 16}, true, RED},
-        {(Rectangle){1432, 128, 28, 492}, true, RED},
-        {(Rectangle){1756, 550, 26, 26}, true, RED},
-        {(Rectangle){1944, 506, 28, 10}, true, RED},
-        {(Rectangle){1880, 482, 24, 28}, true, RED},
-        {(Rectangle){1818, 410, 42, 42}, true, RED},
-        {(Rectangle){1784, 322, 32, 32}, true, RED},
-        {(Rectangle){1752, 260, 32, 32}, true, RED},
-        {(Rectangle){1808, 260, 32, 32}, true, RED},
-        {(Rectangle){1886, 230, 18, 18}, true, RED},
-        {(Rectangle){1916, 166, 18, 18}, true, RED},
-        {(Rectangle){1948, 198, 18, 18}, true, RED},
-        {(Rectangle){1980, 230, 18, 18}, true, RED},
-        {(Rectangle){2012, 262, 18, 18}, true, RED},
-        {(Rectangle){2900, 672, 192, 96}, true, RED},
-        {(Rectangle){3540, 555, 18, 542}, true, RED},
-        {(Rectangle){3540, 358, 18, 146}, true, RED},
-        {(Rectangle){4376, 0, 10, 600}, true, RED},
-        {(Rectangle){4262, 256, 8, 32}, true, RED},
-        {(Rectangle){4262, 352, 8, 32}, true, RED},
-        {(Rectangle){4262, 448, 8, 32}, true, RED},
-        {(Rectangle){4262, 544, 8, 32}, true, RED},
-        {(Rectangle){4306, 296, 18, 18}, true, RED},
-        {(Rectangle){4344, 426, 18, 18}, true, RED},
-        {(Rectangle){4312, 550, 18, 18}, true, RED},
-        {(Rectangle){4780, 640, 26, 32}, true, RED},
-        {(Rectangle){4844, 670, 26, 10}, true, RED},
-        {(Rectangle){4944, 646, 18, 18}, true, RED},
-        {(Rectangle){4944, 582, 18, 18}, true, RED},
-        {(Rectangle){5014, 600, 36, 36}, true, RED},
-        {(Rectangle){5082, 670, 50, 10}, true, RED},
-        {(Rectangle){5320, 248, 48, 80}, true, RED},
-        {(Rectangle){5250, 100, 48, 80}, true, RED},
-        {(Rectangle){5706, 142, 64, 70}, true, RED},
-        {(Rectangle){5738, 32, 64, 70}, true, RED},
-        {(Rectangle){5614, 274, 32, 32}, true, RED},
-        {(Rectangle){5614, 274, 32, 32}, true, RED},
-        {(Rectangle){5658, 322, 36, 36}, true, RED},
-        {(Rectangle){5850, 332, 64, 64}, true, RED},
-        {(Rectangle){5760, 428, 64, 64}, true, RED},
-        {(Rectangle){5624, 624, 64, 64}, true, RED},
-        {(Rectangle){6162, 682, 96, 50}, true, RED},
-        {(Rectangle){6650, 448, 48, 48}, true, RED},
-        {(Rectangle){6650, 598, 48, 48}, true, RED},
-        {(Rectangle){6876, 410, 36, 100}, true, RED},
-        {(Rectangle){6942, 506, 26, 26}, true, RED},
-        {(Rectangle){7198, 644, 32, 32}, true, RED},
-        {(Rectangle){7556, 416, 100, 28}, true, RED},
-        {(Rectangle){7384, 322, 96, 28}, true, RED},
-        {(Rectangle){7756, 170, 48, 52}, true, RED},
-        {(Rectangle){7864, 64, 48, 48}, true, RED},
-        {(Rectangle){7916, 200, 42, 32}, true, RED},
-        {(Rectangle){8032, 376, 48, 48}, true, RED},
-        {(Rectangle){8032, 528, 48, 48}, true, RED},
-        {(Rectangle){8184, 508, 32, 32}, true, RED},
-        {(Rectangle){8278, 420, 32, 32}, true, RED},
-        {(Rectangle){842, 484, 32, 32}, true, RED},
-        {(Rectangle){8342, 484, 32, 32}, true, RED},
-        {(Rectangle){8534, 420, 32, 32}, true, RED},
+        //{(Rectangle){0, 710, 1000, 20}, true, BLANK},
+        {(Rectangle){188, 319, 6, 32}, true, BLANK},
+        {(Rectangle){256, 650, 384, 16}, true, BLANK},
+        {(Rectangle){614, 450, 16, 224}, true, BLANK},
+        {(Rectangle){710, 396, 64, 16}, true, BLANK},
+        {(Rectangle){742, 360, 16, 64}, true, BLANK},
+        {(Rectangle){770, 332, 128, 16}, true, BLANK},
+        {(Rectangle){770, 256, 224, 16}, true, BLANK},
+        {(Rectangle){1432, 128, 28, 492}, true, BLANK},
+        {(Rectangle){1756, 550, 26, 26}, true, BLANK},
+        {(Rectangle){1944, 506, 28, 10}, true, BLANK},
+        {(Rectangle){1880, 482, 24, 28}, true, BLANK},
+        {(Rectangle){1818, 410, 42, 42}, true, BLANK},
+        {(Rectangle){1784, 322, 32, 32}, true, BLANK},
+        {(Rectangle){1752, 260, 32, 32}, true, BLANK},
+        {(Rectangle){1808, 260, 32, 32}, true, BLANK},
+        {(Rectangle){1886, 230, 18, 18}, true, BLANK},
+        {(Rectangle){1916, 166, 18, 18}, true, BLANK},
+        {(Rectangle){1948, 198, 18, 18}, true, BLANK},
+        {(Rectangle){1980, 230, 18, 18}, true, BLANK},
+        {(Rectangle){2012, 262, 18, 18}, true, BLANK},
+        {(Rectangle){2900, 672, 192, 96}, true, BLANK},
+        {(Rectangle){3540, 555, 18, 542}, true, BLANK},
+        {(Rectangle){3540, 358, 18, 146}, true, BLANK},
+        {(Rectangle){4376, 0, 10, 600}, true, BLANK},
+        {(Rectangle){4262, 256, 8, 32}, true, BLANK},
+        {(Rectangle){4262, 352, 8, 32}, true, BLANK},
+        {(Rectangle){4262, 448, 8, 32}, true, BLANK},
+        {(Rectangle){4262, 544, 8, 32}, true, BLANK},
+        {(Rectangle){4306, 296, 18, 18}, true, BLANK},
+        {(Rectangle){4344, 426, 18, 18}, true, BLANK},
+        {(Rectangle){4312, 550, 18, 18}, true, BLANK},
+        {(Rectangle){4780, 640, 26, 32}, true, BLANK},
+        {(Rectangle){4844, 670, 26, 10}, true, BLANK},
+        {(Rectangle){4944, 646, 18, 18}, true, BLANK},
+        {(Rectangle){4944, 582, 18, 18}, true, BLANK},
+        {(Rectangle){5014, 600, 36, 36}, true, BLANK},
+        {(Rectangle){5082, 670, 50, 10}, true, BLANK},
+        {(Rectangle){5320, 248, 48, 80}, true, BLANK},
+        {(Rectangle){5250, 100, 48, 80}, true, BLANK},
+        {(Rectangle){5706, 142, 64, 70}, true, BLANK},
+        {(Rectangle){5738, 32, 64, 70}, true, BLANK},
+        {(Rectangle){5614, 274, 32, 32}, true, BLANK},
+        {(Rectangle){5614, 274, 32, 32}, true, BLANK},
+        {(Rectangle){5658, 322, 36, 36}, true, BLANK},
+        {(Rectangle){5850, 332, 64, 64}, true, BLANK},
+        {(Rectangle){5760, 428, 64, 64}, true, BLANK},
+        {(Rectangle){5624, 624, 64, 64}, true, BLANK},
+        {(Rectangle){6162, 682, 96, 50}, true, BLANK},
+        {(Rectangle){6650, 448, 48, 48}, true, BLANK},
+        {(Rectangle){6650, 598, 48, 48}, true, BLANK},
+        {(Rectangle){6876, 410, 36, 100}, true, BLANK},
+        {(Rectangle){6942, 506, 26, 26}, true, BLANK},
+        {(Rectangle){7198, 644, 32, 32}, true, BLANK},
+        {(Rectangle){7556, 416, 100, 28}, true, BLANK},
+        {(Rectangle){7384, 322, 96, 28}, true, BLANK},
+        {(Rectangle){7756, 170, 48, 52}, true, BLANK},
+        {(Rectangle){7864, 64, 48, 48}, true, BLANK},
+        {(Rectangle){7916, 200, 42, 32}, true, BLANK},
+        {(Rectangle){8032, 376, 48, 48}, true, BLANK},
+        {(Rectangle){8032, 528, 48, 48}, true, BLANK},
+        {(Rectangle){8184, 508, 32, 32}, true, BLANK},
+        {(Rectangle){8278, 420, 32, 32}, true, BLANK},
+        {(Rectangle){842, 484, 32, 32}, true, BLANK},
+        {(Rectangle){8342, 484, 32, 32}, true, BLANK},
+        {(Rectangle){8534, 420, 32, 32}, true, BLANK},
 
         // FUNDO DA MORTE
-        //{(Rectangle){0, 732, 9000, 16}, true, BLUE},
+        {(Rectangle){0, 732, 9000, 16}, true, BLANK},
 
     };
 
@@ -767,12 +803,12 @@ int main(void)
 
     ObjetosCena plataformaCheckpoint[] = {
 
-        {(Rectangle){560, 450, 20, 100}, true, YELLOW},
-        {(Rectangle){3343, 500, 20, 100}, true, YELLOW},
-        {(Rectangle){4648, 570, 20, 100}, true, YELLOW},
-        {(Rectangle){5496, 100, 20, 100}, true, YELLOW},
-        {(Rectangle){6400, 570, 20, 100}, true, YELLOW},
-        {(Rectangle){7620, 100, 20, 100}, true, YELLOW},
+        {(Rectangle){540, 450, 20, 100}, true, BLANK},
+        {(Rectangle){3343, 500, 20, 100}, true, BLANK},
+        {(Rectangle){4648, 570, 20, 100}, true, BLANK},
+        {(Rectangle){5496, 100, 20, 100}, true, BLANK},
+        {(Rectangle){6400, 570, 20, 100}, true, BLANK},
+        {(Rectangle){7620, 100, 20, 100}, true, BLANK},
 
     };
 
@@ -780,9 +816,9 @@ int main(void)
 
     ObjetosCena plataformaVitoria[] = {
 
-        {(Rectangle){8800, 350, 20, 100}, true, PURPLE},
+        {(Rectangle){8800, 350, 20, 100}, true, BLANK},
 
-        // {(Rectangle){100, 0, 20,100000000000000000000 }, true, PURPLE},
+        //  {(Rectangle){100, 0, 20,100000000000000000000 }, true, PURPLE},
 
     };
 
@@ -790,6 +826,15 @@ int main(void)
 
     while (!WindowShouldClose())
     {
+        // -- Lógica para Audio ---
+
+        if (!vitoria)
+        {
+
+            StopSound(somVitoria);
+            UpdateMusicStream(somTemaC);
+        }
+
         // --- Lógica do Jogo ---
 
         cameraPrincipal(&cameraPlayer);
@@ -801,11 +846,13 @@ int main(void)
         // --- Lógica de Morte/Renascimento ---
         if (vida == -1) // Jogador morreu
         {
+
             tempoAnimacaoMorte += tempoDoFrame;
 
             if (tempoAnimacaoMorte >= duracaoAnimacaoMorte)
             {
                 vida = 1;
+                PlaySound(somNascer);
                 playerX = playerCkeckpointX;
                 playerY = playerCkeckpointY;
                 tempoAnimacaoNascer = 0.0f; // Reseta o tempo de nascimento
@@ -814,6 +861,7 @@ int main(void)
         }
         else if (vida == 1) // Jogador está nascendo
         {
+
             tempoAnimacaoNascer += tempoDoFrame;
             if (tempoAnimacaoNascer >= duracaoAnimacaoNascer)
             {
@@ -831,14 +879,17 @@ int main(void)
                 dashAtivo = true;
                 dashTempo = dashDuracao;
                 dashVerticalUsadoNoAr = true; // Marca que o dash vertical foi usado
+
+                PlaySound(somDash);
             }
 
-            else if (IsKeyPressed(KEY_LEFT_SHIFT) && (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) && !dashAtivo && !grudandoParede && dashHorizontalUsosNoAr < dashHorizontalMaxUsos )
+            else if (IsKeyPressed(KEY_LEFT_SHIFT) && (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT)) && !dashAtivo && !grudandoParede && dashHorizontalUsosNoAr < dashHorizontalMaxUsos)
             {
                 dashVertical = false;
                 dashAtivo = true;
                 dashTempo = dashDuracao;
                 dashHorizontalUsosNoAr++;
+                PlaySound(somDash);
             }
 
             if (dashAtivo)
@@ -875,7 +926,7 @@ int main(void)
             }
             else
             {
-                pulo(tempoDoFrame);
+                pulo(tempoDoFrame, somPulo);
                 movimentoHorizontal(tempoDoFrame);
             }
         }
@@ -904,7 +955,7 @@ int main(void)
                 }
                 // Colisão por baixo
                 else if (
-                    playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height &&      // topo do player acima da parte de baixo da plataforma
+                    playerRect.y < plataforma[i].retangulo.y + plataforma[i].retangulo.height &&
                     playerRect.y > plataforma[i].retangulo.y + plataforma[i].retangulo.height - 100 && // margem de tolerância (100 pixels)
                     velocidadePuloY < 0)
                 {
@@ -981,10 +1032,20 @@ int main(void)
             if (CheckCollisionRecs(playerRect, plataformaArmadihas[i].retangulo) && plataformaArmadihas[i].solido)
             {
                 if (vida == 0)
-                {                                // Só morre se estiver vivo
-                    vida = -1;                   // Sinaliza que o jogador morreu
+                { // Só morre se estiver vivo
+                    vida = -1;
+                    PlaySound(somMorrendo); // Sinaliza que o jogador morreu
+
                     podeControlarPlayer = false; // Desativa o controle
                     tempoAnimacaoMorte = 0.0f;   // Reinicia o tempo da animação de morte
+
+                    // --- reset de dash ---
+
+                    dashAtivo = false;
+                    dashTempo = 0.0f;
+                    dashVertical = false;
+                    dashVerticalUsadoNoAr = false;
+                    dashHorizontalUsosNoAr = 0;
                 }
             }
         }
@@ -1006,8 +1067,12 @@ int main(void)
         {
             if (CheckCollisionRecs(playerRect, plataformaVitoria[i].retangulo) && plataformaVitoria[i].solido)
             {
-                vitoria = true;
-                tempoRun = tempoJogo;
+                if (!vitoria)
+                {
+                    vitoria = true;
+                    tempoRun = tempoJogo;
+                    PlaySound(somVitoria);
+                }
             }
         }
 
@@ -1128,7 +1193,7 @@ int main(void)
             personagemParado(jogadorParado);
         }
 
-        DrawRectangleLines(playerX, playerY, (float)jogadorParado.width, (float)jogadorParado.height / 6, RED);
+        DrawRectangleLines(playerX, playerY, (float)jogadorParado.width, (float)jogadorParado.height / 6, BLANK);
 
         EndMode2D();
 
