@@ -495,8 +495,10 @@ void desenharRanking(Texture2D fundoRank)
             }
             else
             {
-
-                ranking[MAX_RANK - 1] = jogadorRank;
+                if (jogadorRank.tempo < ranking[MAX_RANK - 1].tempo)
+                {
+                    ranking[MAX_RANK - 1] = jogadorRank;
+                }
             }
 
             // ordena pelo menor tempo
@@ -1229,7 +1231,7 @@ int main(void)
             estadoPlayerCor = ORANGE;
         }
         DrawText(estadoPlayerTexto, 10, 10, 20, estadoPlayerCor); // Posição (10, 10) na tela
-        
+
         DEBUG: Mostrar posição do player no canto superior direito
         char posicaoTexto[50];
         snprintf(posicaoTexto, sizeof(posicaoTexto), "X: %.1f | Y: %.1f", playerX, playerY);
@@ -1244,13 +1246,13 @@ int main(void)
             FundoMenu = LoadTexture("sprites/Fundo_Nulo.png");
         };
 
-       /* // DEBUG: Mostrar velocidadePuloY no canto superior direito
-        char textoVelocidade[50];
-        snprintf(textoVelocidade, sizeof(textoVelocidade), "velocidadePuloY: %.2f", velocidadePuloY);
-        int larguraVelocidade = MeasureText(textoVelocidade, 20);
-        DrawText(textoVelocidade, tamanhoTelaX - larguraVelocidade - 10, 40, 20, MAROON);
-        DrawTexture(FundoMenu, 0, 0, WHITE);
-        */
+        /* // DEBUG: Mostrar velocidadePuloY no canto superior direito
+         char textoVelocidade[50];
+         snprintf(textoVelocidade, sizeof(textoVelocidade), "velocidadePuloY: %.2f", velocidadePuloY);
+         int larguraVelocidade = MeasureText(textoVelocidade, 20);
+         DrawText(textoVelocidade, tamanhoTelaX - larguraVelocidade - 10, 40, 20, MAROON);
+         DrawTexture(FundoMenu, 0, 0, WHITE);
+         */
         if (vitoria)
         {
 
