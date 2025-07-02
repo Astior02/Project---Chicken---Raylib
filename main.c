@@ -1204,7 +1204,7 @@ int main(void)
         int posicaoXTexto = (tamanhoTelaX - larguraTexto) / 2;
         DrawText(textoTempo, posicaoXTexto, 20, 30, DARKBLUE);
 
-        // Debug Visual para o estado do player
+        /* Debug Visual para o estado do player
         const char *estadoPlayerTexto;
         Color estadoPlayerCor;
 
@@ -1229,12 +1229,13 @@ int main(void)
             estadoPlayerCor = ORANGE;
         }
         DrawText(estadoPlayerTexto, 10, 10, 20, estadoPlayerCor); // Posição (10, 10) na tela
-
-        // DEBUG: Mostrar posição do player no canto superior direito
+        
+        DEBUG: Mostrar posição do player no canto superior direito
         char posicaoTexto[50];
         snprintf(posicaoTexto, sizeof(posicaoTexto), "X: %.1f | Y: %.1f", playerX, playerY);
         int tmanhoT = MeasureText(posicaoTexto, 20);
         DrawText(posicaoTexto, tamanhoTelaX - tmanhoT - 10, 10, 20, DARKGRAY);
+        */
 
         if (IsKeyPressed(KEY_SPACE))
         {
@@ -1243,13 +1244,13 @@ int main(void)
             FundoMenu = LoadTexture("sprites/Fundo_Nulo.png");
         };
 
-        // DEBUG: Mostrar velocidadePuloY no canto superior direito
+       /* // DEBUG: Mostrar velocidadePuloY no canto superior direito
         char textoVelocidade[50];
         snprintf(textoVelocidade, sizeof(textoVelocidade), "velocidadePuloY: %.2f", velocidadePuloY);
         int larguraVelocidade = MeasureText(textoVelocidade, 20);
         DrawText(textoVelocidade, tamanhoTelaX - larguraVelocidade - 10, 40, 20, MAROON);
         DrawTexture(FundoMenu, 0, 0, WHITE);
-
+        */
         if (vitoria)
         {
 
